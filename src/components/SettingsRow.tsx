@@ -56,7 +56,7 @@ export default function SettingsRow({
       {/* Add user (shared in api mode, per-browser in local mode) */}
       <form onSubmit={submitUser} className="flex flex-col gap-1.5">
         <label className="font-mono text-[11px] uppercase tracking-widest text-muted">
-          add a grinder {mode === "api" && <span className="text-grind">· shared</span>}
+          add a user {mode === "api" && <span className="text-grind">· shared</span>}
         </label>
         <div className="flex gap-2">
           <input

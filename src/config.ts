@@ -2,15 +2,15 @@
  * Shared roster — the committed default board.
  *
  * This is the SHARED default set of LeetCode usernames everyone sees when they
- * open the board. To change the shared board for the whole group, edit this
- * array and redeploy. Visitors can also add their own usernames at runtime via
- * the UI (those persist only in their browser's localStorage; see README's
- * "Future / scaling" section for making the roster truly shared).
+ * open the board. Empty by default, so the board starts blank and anyone can
+ * build their own. Visitors add usernames at runtime via the UI (in api mode
+ * those are shared via the server; in local mode they persist in the browser's
+ * localStorage).
  *
- * NOTE: "GANGINAV" is a seed placeholder — correct it to the real LeetCode
- * handle if it doesn't resolve (only PUBLIC profiles work).
+ * To seed a shared baseline that CAN'T be removed via the UI/API, add handles
+ * here (only PUBLIC profiles work) AND mirror them in `api/_lib/config.ts`.
  */
-export const DEFAULT_USERS: string[] = ["GANGINAV"];
+export const DEFAULT_USERS: string[] = [];
 
 /** Per-user accent colors, cycled by roster index. */
 export const USER_COLORS: string[] = [

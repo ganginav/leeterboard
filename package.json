@@ -1,9 +1,9 @@
 {
-  "name": "grindboard",
+  "name": "leeterboard",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "GrindBoard — a shared LeetCode accountability tracker for a friend group.",
+  "description": "Leeterboard — a shared LeetCode accountability tracker for a friend group.",
   "license": "MIT",
   "scripts": {
     "dev": "vite",

@@ -7,9 +7,9 @@
  * (which references import.meta / DOM). This list is tiny and rarely changes.
  *
  * These usernames are the shared baseline everyone sees and can NEVER be
- * removed via the API.
+ * removed via the API. Empty by default; add handles here to seed a baseline.
  */
-export const DEFAULT_USERS: string[] = ["GANGINAV"];
+export const DEFAULT_USERS: string[] = [];
 
 /** Upstream alfa-leetcode-api base (server-only). Self-host plugs in here. */
 export function alfaBase(): string {

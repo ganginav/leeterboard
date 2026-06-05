@@ -1,5 +1,5 @@
 /**
- * leetcode.ts — the entire data layer for GrindBoard.
+ * leetcode.ts — the entire data layer for Leeterboard.
  *
  * This is intentionally the ONE place that knows how to talk to the data
  * source. The rest of the app only consumes `fetchUser()` + `deriveMetrics()`
