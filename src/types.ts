@@ -12,7 +12,20 @@ export interface BoardUser {
   status: FetchStatus | "loading";
   /** Derived metrics, or null until the first successful fetch. */
   metrics: UserMetrics | null;
+  /**
+   * True per-day *solved* delta (today's total − yesterday's snapshot), when
+   * server-side cron snapshots exist. null when unavailable.
+   */
+  solvedToday?: number | null;
 }
 
 /** Metric the leaderboard is currently ranking by. */
 export type Metric = "today" | "week" | "total";
+
+/**
+ * Where the board's data comes from:
+ *  - "api": shared, server-backed (/api/* serverless routes + Redis)
+ *  - "local": per-browser fallback (direct alfa fetch + localStorage roster)
+ *  - "detecting": still probing which one is available
+ */
+export type BoardMode = "detecting" | "api" | "local";

@@ -9,18 +9,29 @@ import {
   DEFAULT_API_BASE,
   DEFAULT_USERS,
   LS_ADDED_USERS,
+  LS_ADMIN_TOKEN,
   LS_API_BASE,
   REQUEST_GAP_MS,
   USER_COLORS,
+  isDefaultUser,
 } from "./config";
 import { deriveMetrics, fetchUser, sleep } from "./lib/leetcode";
-import type { FetchStatus, UserMetrics } from "./lib/leetcode";
-import type { BoardUser, Metric } from "./types";
+import type { FetchResult, FetchStatus, UserMetrics } from "./lib/leetcode";
+import {
+  AdminRequiredError,
+  apiAddUser,
+  apiRemoveUser,
+  loadBoardViaApi,
+  type BoardEntry,
+} from "./lib/api";
+import type { BoardMode, BoardUser, Metric } from "./types";
 
 /** Per-user fetch state, keyed by lowercased username in `states`. */
 interface UserState {
   status: FetchStatus | "loading";
   metrics: UserMetrics | null;
+  /** True per-day solved delta (api mode + cron snapshots only). */
+  solvedToday: number | null;
 }
 
 interface RosterEntry {
@@ -61,14 +72,21 @@ function loadApiBase(): string {
   return envBase || DEFAULT_API_BASE;
 }
 
+function loadAdminToken(): string {
+  try {
+    return localStorage.getItem(LS_ADMIN_TOKEN)?.trim() ?? "";
+  } catch {
+    return "";
+  }
+}
+
 /**
- * Merge committed defaults with user-added names, de-duplicated
- * case-insensitively. Defaults always come first and win the casing.
+ * LOCAL-mode roster: committed defaults merged with user-added names,
+ * de-duplicated case-insensitively, defaults first and unremovable.
  */
 function buildRoster(added: string[]): RosterEntry[] {
   const seen = new Set<string>();
   const roster: RosterEntry[] = [];
-
   for (const u of DEFAULT_USERS) {
     const key = u.toLowerCase();
     if (seen.has(key)) continue;
@@ -85,35 +103,86 @@ function buildRoster(added: string[]): RosterEntry[] {
   return roster;
 }
 
+/** Convert a server leaderboard entry into per-user UI state. */
+function entryToState(entry: BoardEntry): UserState {
+  const status: FetchStatus = entry.error ?? "ok";
+  if (status !== "ok") return { status, metrics: null, solvedToday: null };
+
+  const result: FetchResult = {
+    status: "ok",
+    calendar: entry.calendar,
+    total: entry.total ?? 0,
+  };
+  const solvedToday =
+    entry.total != null && entry.solvedYesterday != null
+      ? Math.max(0, entry.total - entry.solvedYesterday)
+      : null;
+  return { status: "ok", metrics: deriveMetrics(result), solvedToday };
+}
+
 // ─────────────────────────── App ─────────────────────────────────
 
 export default function App() {
-  const [addedUsers, setAddedUsers] = useState<string[]>(loadAddedUsers);
+  const [mode, setMode] = useState<BoardMode>("detecting");
+  const [serverRoster, setServerRoster] = useState<string[]>([]); // api mode
+  const [addedUsers, setAddedUsers] = useState<string[]>(loadAddedUsers); // local mode
   const [apiBase, setApiBase] = useState<string>(loadApiBase);
+  const [adminToken, setAdminToken] = useState<string>(loadAdminToken);
+  const [adminLocked, setAdminLocked] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+
   const [states, setStates] = useState<Record<string, UserState>>({});
   const [syncing, setSyncing] = useState(false);
   const [lastSynced, setLastSynced] = useState<number | null>(null);
   const [metric, setMetric] = useState<Metric>("today");
 
-  const roster = useMemo(() => buildRoster(addedUsers), [addedUsers]);
+  const roster = useMemo<RosterEntry[]>(() => {
+    if (mode === "api") {
+      return serverRoster.map((u) => ({ username: u, isDefault: isDefaultUser(u) }));
+    }
+    return buildRoster(addedUsers);
+  }, [mode, serverRoster, addedUsers]);
 
-  // Refs let async loops read live values without stale closures.
+  // Refs so async loops / callbacks read live values without stale closures.
   const apiBaseRef = useRef(apiBase);
   apiBaseRef.current = apiBase;
   const rosterRef = useRef(roster);
   rosterRef.current = roster;
   const addedUsersRef = useRef(addedUsers);
   addedUsersRef.current = addedUsers;
-  // Monotonic id so a newer sync run cleanly supersedes an in-flight older one.
+  const adminTokenRef = useRef(adminToken);
+  adminTokenRef.current = adminToken;
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
   const runIdRef = useRef(0);
 
-  /** Fetch a single user and fold its result into state. */
+  // ── API mode: pull the whole board in one call ──
+  const applyEntries = useCallback((entries: BoardEntry[]) => {
+    setServerRoster(entries.map((e) => e.username));
+    setStates(() => {
+      const next: Record<string, UserState> = {};
+      for (const e of entries) next[e.username.toLowerCase()] = entryToState(e);
+      return next;
+    });
+  }, []);
+
+  const syncApi = useCallback(async () => {
+    setSyncing(true);
+    const entries = await loadBoardViaApi();
+    if (entries) {
+      applyEntries(entries);
+      setLastSynced(Date.now());
+    }
+    setSyncing(false);
+  }, [applyEntries]);
+
+  // ── Local mode: fetch a single user (used when adding) ──
   const syncUser = useCallback(async (username: string) => {
     const key = username.toLowerCase();
     const base = apiBaseRef.current;
     setStates((prev) => ({
       ...prev,
-      [key]: { status: "loading", metrics: prev[key]?.metrics ?? null },
+      [key]: { status: "loading", metrics: prev[key]?.metrics ?? null, solvedToday: null },
     }));
     const result = await fetchUser(username, base);
     setStates((prev) => ({
@@ -121,33 +190,29 @@ export default function App() {
       [key]: {
         status: result.status,
         metrics: result.status === "ok" ? deriveMetrics(result) : (prev[key]?.metrics ?? null),
+        solvedToday: null,
       },
     }));
   }, []);
 
-  /**
-   * Fetch every roster user SEQUENTIALLY with a polite gap between requests
-   * (the public alfa instance is rate-limited). State updates per-user as each
-   * resolves, so the board fills in progressively rather than blocking.
-   */
+  // ── Local mode: sequential, rate-limited, progressive full sync ──
   const syncAll = useCallback(async () => {
     const runId = ++runIdRef.current;
     const list = rosterRef.current;
     const base = apiBaseRef.current;
     setSyncing(true);
 
-    // Mark everyone loading up front (keep any prior metrics for a soft refresh).
     setStates((prev) => {
       const next = { ...prev };
       for (const r of list) {
         const key = r.username.toLowerCase();
-        next[key] = { status: "loading", metrics: prev[key]?.metrics ?? null };
+        next[key] = { status: "loading", metrics: prev[key]?.metrics ?? null, solvedToday: null };
       }
       return next;
     });
 
     for (let i = 0; i < list.length; i++) {
-      if (runId !== runIdRef.current) return; // a newer run took over
+      if (runId !== runIdRef.current) return; // superseded
       const r = list[i];
       const result = await fetchUser(r.username, base);
       if (runId !== runIdRef.current) return;
@@ -156,8 +221,8 @@ export default function App() {
         ...prev,
         [key]: {
           status: result.status,
-          metrics:
-            result.status === "ok" ? deriveMetrics(result) : (prev[key]?.metrics ?? null),
+          metrics: result.status === "ok" ? deriveMetrics(result) : (prev[key]?.metrics ?? null),
+          solvedToday: null,
         },
       }));
       if (i < list.length - 1) await sleep(REQUEST_GAP_MS);
@@ -167,22 +232,60 @@ export default function App() {
     setSyncing(false);
   }, []);
 
-  // Initial load + re-sync whenever the API base changes.
+  /** Dispatch a refresh by the current mode. */
+  const sync = useCallback(() => {
+    if (modeRef.current === "api") void syncApi();
+    else void syncAll();
+  }, [syncApi, syncAll]);
+
+  // On mount: detect whether the shared /api layer exists, else fall back.
   useEffect(() => {
-    void syncAll();
+    void (async () => {
+      const entries = await loadBoardViaApi();
+      if (entries) {
+        setMode("api");
+        applyEntries(entries);
+        setLastSynced(Date.now());
+      } else {
+        setMode("local");
+        void syncAll();
+      }
+    })();
+  }, [applyEntries, syncAll]);
+
+  // Local mode only: re-sync when the API base changes.
+  useEffect(() => {
+    if (modeRef.current === "local") void syncAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiBase]);
 
-  // Auto-refresh every 10 minutes.
+  // Auto-refresh every 10 minutes (both modes).
   useEffect(() => {
-    const id = window.setInterval(() => void syncAll(), AUTO_SYNC_MS);
+    const id = window.setInterval(() => sync(), AUTO_SYNC_MS);
     return () => window.clearInterval(id);
-  }, [syncAll]);
+  }, [sync]);
 
+  // ── Roster mutations (mode-aware) ──
   const addUser = useCallback(
-    (username: string) => {
+    async (username: string) => {
       const name = username.trim();
       if (!name) return;
+      setActionError(null);
+
+      if (modeRef.current === "api") {
+        try {
+          const users = await apiAddUser(name, adminTokenRef.current);
+          setAdminLocked(false);
+          setServerRoster(users);
+          void syncApi(); // refresh stats so the newcomer fills in
+        } catch (e) {
+          if (e instanceof AdminRequiredError) setAdminLocked(true);
+          else setActionError(e instanceof Error ? e.message : "Couldn't add user.");
+        }
+        return;
+      }
+
+      // local mode
       const key = name.toLowerCase();
       const exists = buildRoster(addedUsersRef.current).some(
         (r) => r.username.toLowerCase() === key,
@@ -193,24 +296,46 @@ export default function App() {
         persistAddedUsers(next);
         return next;
       });
-      void syncUser(name); // fetch just the newcomer
+      void syncUser(name);
     },
-    [syncUser],
+    [syncApi, syncUser],
   );
 
-  const removeUser = useCallback((username: string) => {
-    const key = username.toLowerCase();
-    setAddedUsers((prev) => {
-      const next = prev.filter((u) => u.toLowerCase() !== key);
-      persistAddedUsers(next);
-      return next;
-    });
-    setStates((prev) => {
-      const next = { ...prev };
-      delete next[key];
-      return next;
-    });
-  }, []);
+  const removeUser = useCallback(
+    async (username: string) => {
+      setActionError(null);
+      if (modeRef.current === "api") {
+        try {
+          const users = await apiRemoveUser(username, adminTokenRef.current);
+          setAdminLocked(false);
+          setServerRoster(users);
+          setStates((prev) => {
+            const next = { ...prev };
+            delete next[username.toLowerCase()];
+            return next;
+          });
+        } catch (e) {
+          if (e instanceof AdminRequiredError) setAdminLocked(true);
+          else setActionError(e instanceof Error ? e.message : "Couldn't remove user.");
+        }
+        return;
+      }
+
+      // local mode
+      const key = username.toLowerCase();
+      setAddedUsers((prev) => {
+        const next = prev.filter((u) => u.toLowerCase() !== key);
+        persistAddedUsers(next);
+        return next;
+      });
+      setStates((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    },
+    [],
+  );
 
   const changeApiBase = useCallback((base: string) => {
     const trimmed = base.trim() || DEFAULT_API_BASE;
@@ -219,7 +344,18 @@ export default function App() {
     } catch {
       /* ignore */
     }
-    setApiBase(trimmed); // triggers the re-sync effect above
+    setApiBase(trimmed); // local-mode re-sync effect picks this up
+  }, []);
+
+  const changeAdminToken = useCallback((token: string) => {
+    try {
+      localStorage.setItem(LS_ADMIN_TOKEN, token);
+    } catch {
+      /* ignore */
+    }
+    setAdminToken(token);
+    setAdminLocked(false);
+    setActionError(null);
   }, []);
 
   // Compose roster + fetch state + cycled color into render-ready users.
@@ -233,6 +369,7 @@ export default function App() {
           isDefault: r.isDefault,
           status: st?.status ?? "loading",
           metrics: st?.metrics ?? null,
+          solvedToday: st?.solvedToday ?? null,
         };
       }),
     [roster, states],
@@ -247,16 +384,11 @@ export default function App() {
     [boardUsers],
   );
 
-  // Today cards reorder live by today's count (data present first, then others).
   const cardsByToday = useMemo(
-    () =>
-      [...boardUsers].sort(
-        (a, b) => (b.metrics?.today ?? -1) - (a.metrics?.today ?? -1),
-      ),
+    () => [...boardUsers].sort((a, b) => (b.metrics?.today ?? -1) - (a.metrics?.today ?? -1)),
     [boardUsers],
   );
 
-  // Last-7 section: only users with data, ordered by their 7-day total.
   const weekly = useMemo(
     () =>
       boardUsers
@@ -271,7 +403,7 @@ export default function App() {
         subsToday={subsToday}
         syncing={syncing}
         lastSynced={lastSynced}
-        onSync={() => void syncAll()}
+        onSync={sync}
       />
 
       {/* Honest note about what the numbers mean. */}
@@ -279,9 +411,8 @@ export default function App() {
         <span className="font-mono font-bold text-grind">heads up:</span> the
         daily number is <strong className="text-ink">submissions</strong> —
         LeetCode&apos;s per-day signal — so re-submits and multiple attempts
-        count.{" "}
-        <strong className="text-ink">solved</strong> is the exact cumulative
-        count of unique accepted problems. Only{" "}
+        count. <strong className="text-ink">solved</strong> is the exact
+        cumulative count of unique accepted problems. Only{" "}
         <strong className="text-ink">public</strong> LeetCode profiles can be
         read.
       </p>
@@ -346,13 +477,30 @@ export default function App() {
       {/* ── Settings ── */}
       <section className="mt-10">
         <SettingsRow
+          mode={mode === "detecting" ? "local" : mode}
           apiBase={apiBase}
           onApiBaseChange={changeApiBase}
           onAddUser={addUser}
+          adminToken={adminToken}
+          onAdminTokenChange={changeAdminToken}
+          adminLocked={adminLocked}
         />
+        {actionError && (
+          <p className="mt-2 px-1 font-mono text-[11px] text-danger">{actionError}</p>
+        )}
         <p className="mt-2 px-1 font-mono text-[11px] text-muted">
-          reading from{" "}
-          <span className="text-ink">{apiBase}</span>
+          {mode === "api" ? (
+            <>
+              <span className="text-grind">shared board</span> · server-cached ·
+              roster lives on the server
+            </>
+          ) : (
+            <>
+              <span className="text-gold">local mode</span> · reading from{" "}
+              <span className="text-ink">{apiBase}</span> · roster saved in this
+              browser
+            </>
+          )}
         </p>
       </section>
 
