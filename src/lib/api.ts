@@ -34,14 +34,6 @@ interface RosterResponse {
   defaults: string[];
 }
 
-/** Thrown when a roster write needs an admin token (HTTP 401). */
-export class AdminRequiredError extends Error {
-  constructor() {
-    super("Admin token required");
-    this.name = "AdminRequiredError";
-  }
-}
-
 /**
  * Load the whole board in ONE call. Returns null when the board can't be loaded
  * (the API layer is unreachable or returns a non-JSON response); the caller
@@ -67,18 +59,12 @@ async function rosterWrite(
   method: "POST" | "DELETE",
   url: string,
   body: unknown,
-  adminToken: string,
 ): Promise<string[]> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (adminToken) headers["x-admin-token"] = adminToken;
-
   const res = await fetch(url, {
     method,
-    headers,
+    headers: { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-
-  if (res.status === 401) throw new AdminRequiredError();
 
   const data: unknown = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -90,19 +76,11 @@ async function rosterWrite(
 }
 
 /** Add a user to the shared roster; returns the updated roster. */
-export function apiAddUser(username: string, adminToken: string): Promise<string[]> {
-  return rosterWrite("POST", "/api/roster", { username }, adminToken);
+export function apiAddUser(username: string): Promise<string[]> {
+  return rosterWrite("POST", "/api/roster", { username });
 }
 
 /** Remove a user from the shared roster; returns the updated roster. */
-export function apiRemoveUser(
-  username: string,
-  adminToken: string,
-): Promise<string[]> {
-  return rosterWrite(
-    "DELETE",
-    `/api/roster?user=${encodeURIComponent(username)}`,
-    undefined,
-    adminToken,
-  );
+export function apiRemoveUser(username: string): Promise<string[]> {
+  return rosterWrite("DELETE", `/api/roster?user=${encodeURIComponent(username)}`, undefined);
 }

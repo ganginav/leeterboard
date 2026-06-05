@@ -63,8 +63,8 @@ notice and retries on the next sync.
 | --- | --- | --- |
 | `/api/stats?user=` | GET | normalized, Redis-cached stats for one user (`404` not_found / `502` unreachable) |
 | `/api/roster` | GET | shared roster = committed defaults ∪ Redis set (deduped) |
-| `/api/roster` | POST | add a user (`{username}`); admin-guarded |
-| `/api/roster?user=` | DELETE | remove a user; admin-guarded; **defaults can't be removed** (`409`) |
+| `/api/roster` | POST | add a user (`{username}`); open write (cross-origin gated by CORS) |
+| `/api/roster?user=` | DELETE | remove a user; open write; **defaults can't be removed** (`409`) |
 | `/api/leaderboard` | GET | **one call** returning every roster user's stats (through the cache) |
 | `/api/snapshot` | GET | cron: record each user's solved total for daily deltas (optional) |
 
@@ -82,7 +82,6 @@ Environment Variables** (or a local `.env` for `vercel dev`). See
 | `KV_REST_API_URL` / `KV_REST_API_TOKEN` | no¹ | — | alternate names the Vercel Upstash integration injects (either pair works) |
 | `ALFA_API_BASE` | no | `https://alfa-leetcode-api.onrender.com` | upstream LeetCode API; **point at your own alfa to self-host** |
 | `CACHE_TTL_SECONDS` | no | `600` | per-user stats cache TTL |
-| `ADMIN_TOKEN` | no | — | if set, roster writes require header `x-admin-token`; if unset, writes are open |
 | `CRON_SECRET` | no | — | optional secret for the snapshot cron (`Authorization: Bearer …`) |
 | `ALLOWED_ORIGINS` | no | — | comma-separated origins allowed to make **cross-origin** roster writes; only needed if the frontend is served from a different origin than `/api` (reads are public regardless) |
 
@@ -129,8 +128,8 @@ npm run preview        # serve the built SPA only (no /api → board can't load)
    **Dashboard → Storage → Marketplace → "Upstash for Redis" → create a database
    → Connect Project.** This injects `KV_REST_API_URL` / `KV_REST_API_TOKEN`
    automatically (the app also accepts `UPSTASH_REDIS_REST_URL` / `_TOKEN`).
-3. (Optional) Set `ADMIN_TOKEN` to lock roster edits, `ALFA_API_BASE` to use your
-   own alfa instance, and `CACHE_TTL_SECONDS` to tune cache freshness.
+3. (Optional) Set `ALFA_API_BASE` to use your own alfa instance, and
+   `CACHE_TTL_SECONDS` to tune cache freshness.
 4. Deploy. Done — no Redis still works (defaults-only, uncached).
 
 ### Changing the shared roster
@@ -141,8 +140,8 @@ npm run preview        # serve the built SPA only (no /api → board can't load)
   redeploy. These can never be removed via the API.
 - **At runtime:** anyone can add a username in the UI — it's `POST`ed to
   `/api/roster` and shared with everyone. Non-default users can be removed.
-  (If `ADMIN_TOKEN` is set, the UI shows a token field; a rejected write surfaces
-  "edits are locked — enter the admin token".)
+  Writes are open; if you serve the frontend from a different origin than `/api`,
+  set `ALLOWED_ORIGINS` so the cross-origin write isn't blocked by CORS.
 
 ---
 
@@ -156,8 +155,8 @@ cumulative solved total once a day; the UI then shows
 - `vercel.json` includes a daily cron hitting `/api/snapshot`. **Vercel Cron
   needs a paid plan / has plan limits** — this feature is entirely optional; the
   board works without it (you just won't see "solved today").
-- Protect the route with `ADMIN_TOKEN` (header `x-admin-token`) or `CRON_SECRET`
-  (`Authorization: Bearer …`, which Vercel Cron sends automatically).
+- Protect the route with `CRON_SECRET` (`Authorization: Bearer …`, which Vercel
+  Cron sends automatically). If unset, the route is open.
 
 ---
 
@@ -180,7 +179,7 @@ api/                   # Vercel serverless functions (the shared backend)
   _lib/                #   redis, config, leetcode (normalize+fetch), store (cache+roster), http (auth)
   stats.ts roster.ts leaderboard.ts snapshot.ts
 src/
-  config.ts            # DEFAULT_USERS, colors, admin-token storage key, tuning
+  config.ts            # DEFAULT_USERS, colors, tuning
   lib/api.ts           # client → /api data layer (swappable network source)
   lib/leetcode.ts      # date helpers + streak + deriveMetrics (client-side derivations)
   components/          # Header, Card, Leaderboard, Sparkline, SettingsRow

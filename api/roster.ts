@@ -6,13 +6,14 @@ import {
   removeRosterUser,
 } from "./_lib/store.js";
 import { DEFAULT_USERS } from "./_lib/config.js";
-import { allowCors, queryParam, requireAdmin, validUsername } from "./_lib/http.js";
+import { allowCors, queryParam, validUsername } from "./_lib/http.js";
 
 /**
  * /api/roster — the SHARED roster (committed defaults + Redis-stored adds).
  *   GET    -> { users, defaults }            (public)
- *   POST   { username }  -> { users }        (write, admin-guarded)
- *   DELETE ?user=<name>  -> { users }        (write, admin-guarded; defaults protected)
+ *   POST   { username }  -> { users }        (open write; cross-origin writes
+ *                                             gated by ALLOWED_ORIGINS CORS)
+ *   DELETE ?user=<name>  -> { users }        (open write; defaults protected)
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   allowCors(req, res);
@@ -27,7 +28,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     case "POST": {
-      if (!requireAdmin(req, res)) return; // responds 401 itself
       const name = validUsername((req.body as { username?: unknown })?.username);
       if (!name) {
         return res
@@ -39,7 +39,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     case "DELETE": {
-      if (!requireAdmin(req, res)) return;
       const name = validUsername(queryParam(req.query, "user"));
       if (!name) {
         return res

@@ -49,7 +49,7 @@ The LeetCode quirks split across the two sides: **`api/_lib/leetcode.ts`** owns 
 - **Redis is optional and every path degrades gracefully.** `getRedis()` returns null when neither `UPSTASH_REDIS_REST_URL/_TOKEN` nor `KV_REST_API_URL/_TOKEN` is set; callers then fetch uncached and serve defaults-only. **Use `@upstash/redis`, never the sunset `@vercel/kv`.**
 - **Caching:** `getStatsCached()` is read-through (`stats:{user}` with `CACHE_TTL_SECONDS` TTL); only `ok` results are cached. Responses set `x-cache: HIT|MISS`.
 - **Roster:** committed `DEFAULT_USERS` (duplicated in `api/_lib/config.ts` ↔ `src/config.ts`, kept in sync deliberately) merged case-insensitively with a Redis SET `roster:users`. Defaults are unremovable (DELETE returns 409).
-- **Write protection:** if `ADMIN_TOKEN` is set, `POST`/`DELETE /api/roster` require header `x-admin-token`; otherwise writes are open. GET is always public. A 401 surfaces in the UI as an admin-token prompt (`AdminRequiredError`).
+- **Write protection:** roster writes (`POST`/`DELETE /api/roster`) are open — there's no token gate. Cross-origin writes are blocked by CORS: `allowCors` only advertises `POST`/`DELETE` to origins listed in `ALLOWED_ORIGINS` (the verbs are preflighted, so an untrusted browser never gets to send the write). GET is always public.
 - **`/api/leaderboard`** returns the whole board in one call (client renders from it). **`/api/snapshot`** is an optional daily cron recording solved totals so the UI can show a true "solved today" delta.
 
 ### `vercel.json`
@@ -64,4 +64,4 @@ Rewrites every non-`/api` route to the SPA (`/((?!api/).*)` → `/index.html`) s
 
 ## Deploy
 
-- **Vercel:** Vite SPA + `/api` functions auto-detected. Add **Upstash Redis** via Dashboard → Storage → Marketplace (injects `KV_REST_API_*`). Optional: `ADMIN_TOKEN`, `ALFA_API_BASE` (point upstream at your own alfa instance), `CACHE_TTL_SECONDS`, `CRON_SECRET`. The app requires `/api`, so Vercel (or an equivalent functions host) is the only supported deploy target — there's no static-only build.
+- **Vercel:** Vite SPA + `/api` functions auto-detected. Add **Upstash Redis** via Dashboard → Storage → Marketplace (injects `KV_REST_API_*`). Optional: `ALFA_API_BASE` (point upstream at your own alfa instance), `ALLOWED_ORIGINS` (trusted origins for cross-origin roster writes), `CACHE_TTL_SECONDS`, `CRON_SECRET`. The app requires `/api`, so Vercel (or an equivalent functions host) is the only supported deploy target — there's no static-only build.

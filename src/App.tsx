@@ -1,19 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Header from "./components/Header";
 import Card from "./components/Card";
 import Leaderboard from "./components/Leaderboard";
 import Sparkline from "./components/Sparkline";
 import SettingsRow from "./components/SettingsRow";
-import { AUTO_SYNC_MS, LS_ADMIN_TOKEN, USER_COLORS, isDefaultUser } from "./config";
+import { AUTO_SYNC_MS, USER_COLORS, isDefaultUser } from "./config";
 import { deriveMetrics } from "./lib/leetcode";
 import type { FetchResult, FetchStatus, UserMetrics } from "./lib/leetcode";
-import {
-  AdminRequiredError,
-  apiAddUser,
-  apiRemoveUser,
-  loadBoardViaApi,
-  type BoardEntry,
-} from "./lib/api";
+import { apiAddUser, apiRemoveUser, loadBoardViaApi, type BoardEntry } from "./lib/api";
 import type { BoardUser, Metric } from "./types";
 
 /** Per-user fetch state, keyed by lowercased username in `states`. */
@@ -27,14 +21,6 @@ interface UserState {
 interface RosterEntry {
   username: string;
   isDefault: boolean;
-}
-
-function loadAdminToken(): string {
-  try {
-    return localStorage.getItem(LS_ADMIN_TOKEN)?.trim() ?? "";
-  } catch {
-    return "";
-  }
 }
 
 /** Convert a server leaderboard entry into per-user UI state. */
@@ -58,8 +44,6 @@ function entryToState(entry: BoardEntry): UserState {
 
 export default function App() {
   const [serverRoster, setServerRoster] = useState<string[]>([]);
-  const [adminToken, setAdminToken] = useState<string>(loadAdminToken);
-  const [adminLocked, setAdminLocked] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [boardError, setBoardError] = useState(false);
 
@@ -72,10 +56,6 @@ export default function App() {
     () => serverRoster.map((u) => ({ username: u, isDefault: isDefaultUser(u) })),
     [serverRoster],
   );
-
-  // Ref so async callbacks read the live token without a stale closure.
-  const adminTokenRef = useRef(adminToken);
-  adminTokenRef.current = adminToken;
 
   const applyEntries = useCallback((entries: BoardEntry[]) => {
     setServerRoster(entries.map((e) => e.username));
@@ -117,13 +97,11 @@ export default function App() {
       if (!name) return;
       setActionError(null);
       try {
-        const users = await apiAddUser(name, adminTokenRef.current);
-        setAdminLocked(false);
+        const users = await apiAddUser(name);
         setServerRoster(users);
         void sync(); // refresh stats so the newcomer fills in
       } catch (e) {
-        if (e instanceof AdminRequiredError) setAdminLocked(true);
-        else setActionError(e instanceof Error ? e.message : "Couldn't add user.");
+        setActionError(e instanceof Error ? e.message : "Couldn't add user.");
       }
     },
     [sync],
@@ -132,8 +110,7 @@ export default function App() {
   const removeUser = useCallback(async (username: string) => {
     setActionError(null);
     try {
-      const users = await apiRemoveUser(username, adminTokenRef.current);
-      setAdminLocked(false);
+      const users = await apiRemoveUser(username);
       setServerRoster(users);
       setStates((prev) => {
         const next = { ...prev };
@@ -141,20 +118,8 @@ export default function App() {
         return next;
       });
     } catch (e) {
-      if (e instanceof AdminRequiredError) setAdminLocked(true);
-      else setActionError(e instanceof Error ? e.message : "Couldn't remove user.");
+      setActionError(e instanceof Error ? e.message : "Couldn't remove user.");
     }
-  }, []);
-
-  const changeAdminToken = useCallback((token: string) => {
-    try {
-      localStorage.setItem(LS_ADMIN_TOKEN, token);
-    } catch {
-      /* ignore */
-    }
-    setAdminToken(token);
-    setAdminLocked(false);
-    setActionError(null);
   }, []);
 
   // Compose roster + fetch state + cycled color into render-ready users.
@@ -290,12 +255,7 @@ export default function App() {
 
       {/* ── Settings ── */}
       <section className="mt-10">
-        <SettingsRow
-          onAddUser={addUser}
-          adminToken={adminToken}
-          onAdminTokenChange={changeAdminToken}
-          adminLocked={adminLocked}
-        />
+        <SettingsRow onAddUser={addUser} />
         {actionError && (
           <p className="mt-2 px-1 font-mono text-[11px] text-danger">{actionError}</p>
         )}

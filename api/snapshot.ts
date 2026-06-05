@@ -15,8 +15,8 @@ const SNAPSHOT_TTL_SECONDS = 60 * 60 * 24 * 90; // 90 days
  * "solved today" delta (today's total − yesterday's snapshot) instead of just
  * raw submissions. Optional: the app works fine without it.
  *
- * Protected by ADMIN_TOKEN (x-admin-token) or CRON_SECRET (Authorization:
- * Bearer ...). Vercel Cron requires a Pro plan — this whole feature is optional.
+ * Protected by CRON_SECRET (Authorization: Bearer ...), which Vercel Cron sends
+ * automatically. Vercel Cron requires a Pro plan — this whole feature is optional.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   allowCors(req, res);

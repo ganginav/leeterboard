@@ -23,9 +23,6 @@ export const USER_COLORS: string[] = [
   "#ffa657",
 ];
 
-/** localStorage key for the admin token used to authorize roster writes. */
-export const LS_ADMIN_TOKEN = "gb-admin-token";
-
 /** True if `name` is one of the committed defaults (case-insensitive). */
 export function isDefaultUser(name: string): boolean {
   const k = name.trim().toLowerCase();

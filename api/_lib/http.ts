@@ -14,40 +14,16 @@ function safeEqual(a: string, b: string): boolean {
 }
 
 /**
- * Write protection for mutating routes.
- *
- * - If ADMIN_TOKEN is set, POST/DELETE require a matching `x-admin-token`
- *   header (otherwise 401). GET routes never call this.
- * - If ADMIN_TOKEN is unset, writes are open (fine for a small friend group).
- */
-export function requireAdmin(req: VercelRequest, res: VercelResponse): boolean {
-  const expected = process.env.ADMIN_TOKEN?.trim();
-  if (!expected) return true; // open writes
-
-  const provided = headerValue(req.headers["x-admin-token"]);
-  if (provided && safeEqual(provided, expected)) return true;
-
-  res.status(401).json({ error: "unauthorized", message: "Admin token required to edit the roster." });
-  return false;
-}
-
-/**
- * Cron/admin auth for the snapshot route. Accepts either the ADMIN_TOKEN
- * (x-admin-token) or Vercel Cron's `Authorization: Bearer <CRON_SECRET>`.
- * If neither secret is configured, the route is open.
+ * Cron auth for the snapshot route. Accepts Vercel Cron's
+ * `Authorization: Bearer <CRON_SECRET>`. If CRON_SECRET is unset, the route is
+ * open (the feature is optional and the snapshot only writes derived data).
  */
 export function authorizeSnapshot(req: VercelRequest): boolean {
-  const adminToken = process.env.ADMIN_TOKEN?.trim();
   const cronSecret = process.env.CRON_SECRET?.trim();
-  if (!adminToken && !cronSecret) return true; // unprotected by choice
-
-  const admin = headerValue(req.headers["x-admin-token"]);
-  if (adminToken && admin && safeEqual(admin, adminToken)) return true;
+  if (!cronSecret) return true; // unprotected by choice
 
   const auth = headerValue(req.headers["authorization"]);
-  if (cronSecret && auth && safeEqual(auth, `Bearer ${cronSecret}`)) return true;
-
-  return false;
+  return !!auth && safeEqual(auth, `Bearer ${cronSecret}`);
 }
 
 export function headerValue(h: string | string[] | undefined): string | undefined {
@@ -98,5 +74,5 @@ export function allowCors(req: VercelRequest, res: VercelResponse): void {
     "Access-Control-Allow-Methods",
     trusted ? "GET,POST,DELETE,OPTIONS" : "GET,OPTIONS",
   );
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-admin-token");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 }
