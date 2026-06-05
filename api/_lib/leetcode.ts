@@ -15,7 +15,7 @@
  *      included); `total` from /solved is the unique cumulative solved count.
  */
 
-import { alfaBase } from "./config";
+import { alfaBase } from "./config.js";
 
 export type Calendar = Record<string, number>;
 export type FetchStatus = "ok" | "not_found" | "unreachable";

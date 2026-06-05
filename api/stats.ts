@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { getStatsCached } from "./_lib/store";
-import { allowCors, queryParam, validUsername } from "./_lib/http";
+import { getStatsCached } from "./_lib/store.js";
+import { allowCors, queryParam, validUsername } from "./_lib/http.js";
 
 /**
  * GET /api/stats?user=<username>

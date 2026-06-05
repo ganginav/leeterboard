@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { getRoster, getStatsCached } from "./_lib/store";
-import { getRedis } from "./_lib/redis";
-import { KEY } from "./_lib/config";
-import { agoKey, type Calendar, type FetchStatus } from "./_lib/leetcode";
-import { allowCors } from "./_lib/http";
+import { getRoster, getStatsCached } from "./_lib/store.js";
+import { getRedis } from "./_lib/redis.js";
+import { KEY } from "./_lib/config.js";
+import { agoKey, type Calendar, type FetchStatus } from "./_lib/leetcode.js";
+import { allowCors } from "./_lib/http.js";
 
 /** One user in the combined leaderboard payload. */
 interface BoardEntry {

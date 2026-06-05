@@ -4,9 +4,9 @@ import {
   getRoster,
   isDefaultUser,
   removeRosterUser,
-} from "./_lib/store";
-import { DEFAULT_USERS } from "./_lib/config";
-import { allowCors, queryParam, requireAdmin, validUsername } from "./_lib/http";
+} from "./_lib/store.js";
+import { DEFAULT_USERS } from "./_lib/config.js";
+import { allowCors, queryParam, requireAdmin, validUsername } from "./_lib/http.js";
 
 /**
  * /api/roster — the SHARED roster (committed defaults + Redis-stored adds).
