@@ -13,13 +13,14 @@ import type { BoardUser, Metric } from "../types";
 
 interface UserState {
   status: FetchStatus | "loading";
+  name: string | null;
   metrics: UserMetrics | null;
   solvedToday: number | null;
 }
 
 function entryToState(entry: BoardEntry): UserState {
   const status: FetchStatus = entry.error ?? "ok";
-  if (status !== "ok") return { status, metrics: null, solvedToday: null };
+  if (status !== "ok") return { status, name: entry.name, metrics: null, solvedToday: null };
   const result: FetchResult = {
     status: "ok",
     acSubs: entry.acSubs,
@@ -29,7 +30,7 @@ function entryToState(entry: BoardEntry): UserState {
     entry.total != null && entry.solvedYesterday != null
       ? Math.max(0, entry.total - entry.solvedYesterday)
       : null;
-  return { status: "ok", metrics: deriveMetrics(result), solvedToday };
+  return { status: "ok", name: entry.name, metrics: deriveMetrics(result), solvedToday };
 }
 
 export default function BoardView({ boardId }: { boardId: string }) {
@@ -130,6 +131,7 @@ export default function BoardView({ boardId }: { boardId: string }) {
         const st = states[username.toLowerCase()];
         return {
           username,
+          name: st?.name ?? null,
           color: USER_COLORS[i % USER_COLORS.length],
           status: st?.status ?? "loading",
           metrics: st?.metrics ?? null,
@@ -191,7 +193,7 @@ export default function BoardView({ boardId }: { boardId: string }) {
 
       {/* Share bar */}
       <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-edge bg-surface/50 px-4 py-2.5">
-        <span className="font-mono text-[11px] uppercase tracking-widest text-muted">
+        <span className="text-xs font-medium text-muted">
           board code
         </span>
         <span className="font-mono text-sm font-bold text-ink">{boardId}</span>
@@ -212,7 +214,7 @@ export default function BoardView({ boardId }: { boardId: string }) {
 
       {/* ── Today ── */}
       <section className="mt-10">
-        <h2 className="mb-3 font-mono text-sm font-bold uppercase tracking-widest text-muted">
+        <h2 className="mb-3 text-sm font-semibold text-muted">
           Today
         </h2>
         {boardUsers.length === 0 ? (

@@ -9,6 +9,8 @@ import { allowCors, queryParam } from "./_lib/http.js";
 /** One user in the combined leaderboard payload. */
 interface BoardEntry {
   username: string;
+  /** Profile display name; null if unset/unavailable. */
+  name: string | null;
   /** Raw recent accepted submissions; the client buckets by local day. */
   acSubs: AcSub[];
   total: number | null;
@@ -67,6 +69,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (result.status === "ok" && result.data) {
       users.push({
         username,
+        name: result.data.name,
         acSubs: result.data.acSubs,
         total: result.data.total,
         solvedYesterday,
@@ -74,7 +77,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } else {
       // result.status is "not_found" | "unreachable" here (ok always has data).
       const error = result.status === "ok" ? "unreachable" : result.status;
-      users.push({ username, acSubs: [], total: null, solvedYesterday, error });
+      users.push({ username, name: null, acSubs: [], total: null, solvedYesterday, error });
     }
 
     // Only pause when we actually hit upstream (cache misses), to respect limits.

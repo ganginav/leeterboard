@@ -14,17 +14,10 @@ body,
 
 body {
   margin: 0;
-  /* Dark "grindset terminal" radial gradient. */
-  background:
-    radial-gradient(
-      circle at 20% -10%,
-      #11261a 0%,
-      #0a0e0d 45%,
-      #07090a 100%
-    );
-  background-attachment: fixed;
-  color: #e6edf3;
-  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  /* Flat LeetCode-style dark background. */
+  background: #1a1a1a;
+  color: #f0f0f0;
+  font-family: "Helvetica Neue", system-ui, -apple-system, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }

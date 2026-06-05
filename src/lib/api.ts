@@ -16,6 +16,8 @@ export interface BoardMeta {
 /** One user as returned by GET /api/leaderboard. */
 export interface BoardEntry {
   username: string;
+  /** Profile display name; null if unset/unavailable. */
+  name: string | null;
   /** Raw recent accepted submissions; bucketed into days client-side (local tz). */
   acSubs: AcSub[];
   total: number | null;

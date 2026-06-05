@@ -54,7 +54,7 @@ export default function TrendChart({ users }: { users: BoardUser[] }) {
   return (
     <div className="rounded-2xl border border-edge bg-surface/60 p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <span className="font-mono text-sm font-bold uppercase tracking-widest text-muted">
+        <span className="text-sm font-semibold text-muted">
           Solved per day
         </span>
         <div className="flex gap-1 rounded-xl border border-edge bg-surface p-1">
@@ -63,7 +63,7 @@ export default function TrendChart({ users }: { users: BoardUser[] }) {
               key={m}
               type="button"
               onClick={() => setMode(m)}
-              className={`rounded-lg px-3 py-1 font-mono text-xs font-bold uppercase tracking-wider transition ${
+              className={`rounded-lg px-3 py-1 text-xs font-semibold transition ${
                 mode === m ? "bg-grind/15 text-grind" : "text-muted hover:text-ink"
               }`}
             >
@@ -77,7 +77,7 @@ export default function TrendChart({ users }: { users: BoardUser[] }) {
         {/* horizontal gridlines + y labels */}
         {tickVals.map((v) => (
           <g key={v}>
-            <line x1={PAD.l} y1={y(v)} x2={W - PAD.r} y2={y(v)} stroke="#21262d" strokeWidth={1} />
+            <line x1={PAD.l} y1={y(v)} x2={W - PAD.r} y2={y(v)} stroke="#3a3a3a" strokeWidth={1} />
             <text x={PAD.l - 6} y={y(v) + 3} textAnchor="end" className="fill-muted" fontSize={10} fontFamily="JetBrains Mono, monospace">
               {v}
             </text>
@@ -125,9 +125,9 @@ export default function TrendChart({ users }: { users: BoardUser[] }) {
       {/* legend */}
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
         {series.map((u) => (
-          <span key={u.username} className="flex items-center gap-1.5 font-mono text-xs text-muted">
+          <span key={u.username} className="flex items-center gap-1.5 text-xs text-muted">
             <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: u.color }} />
-            {u.username}
+            {u.name ?? u.username}
           </span>
         ))}
       </div>

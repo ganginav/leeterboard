@@ -27,9 +27,9 @@ export default function Header({
             e.preventDefault();
             navigate("/");
           }}
-          className="inline-block font-mono text-3xl font-extrabold tracking-tight transition hover:opacity-80 sm:text-4xl"
+          className="inline-block text-2xl font-bold tracking-tight transition hover:opacity-80 sm:text-3xl"
         >
-          <span className="text-grind">LEET</span>ERBOARD
+          <span className="text-grind">Leet</span>erboard
         </a>
         <p className="mt-1 font-sans text-sm text-muted">
           {boardName ?? "See who's actually doing their LeetCode."}
@@ -41,7 +41,7 @@ export default function Header({
           <div className="font-mono text-3xl font-extrabold leading-none tnum text-grind">
             {todayTotal}
           </div>
-          <div className="font-mono text-[11px] uppercase tracking-widest text-muted">
+          <div className="text-xs font-medium text-muted">
             solved today
           </div>
         </div>
@@ -55,7 +55,7 @@ export default function Header({
               ? `Last synced ${new Date(lastSynced).toLocaleTimeString()}`
               : "Not synced yet"
           }
-          className="rounded-xl border border-edge2 bg-surface px-4 py-2 font-mono text-sm font-bold uppercase tracking-wider text-ink transition hover:border-grind hover:text-grind disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-edge2 disabled:hover:text-ink"
+          className="rounded-xl border border-edge2 bg-surface px-4 py-2 text-sm font-semibold text-ink transition hover:border-grind hover:text-grind disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-edge2 disabled:hover:text-ink"
         >
           {syncing ? "syncing…" : "sync now"}
         </button>

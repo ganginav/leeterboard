@@ -42,6 +42,8 @@ export interface NormalizedStats {
   acSubs: AcSub[];
   /** Cumulative unique solved; null if /solved was unavailable. */
   total: number | null;
+  /** Profile display name (e.g. "Vibhu Gangina"); null if unset or unavailable. */
+  name: string | null;
 }
 
 const REQUEST_TIMEOUT_MS = 12_000;
@@ -107,6 +109,15 @@ function extractSolved(payload: unknown): number | null {
   return null;
 }
 
+/** Profile display name from `/{user}` (the `name` field), trimmed; null if blank. */
+function extractName(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object") return null;
+  const name = (payload as Record<string, unknown>).name;
+  if (typeof name !== "string") return null;
+  const trimmed = name.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 function hasErrorsEnvelope(payload: unknown): boolean {
   return (
     !!payload &&
@@ -137,36 +148,46 @@ export async function fetchUpstreamStats(
     // at 20 upstream regardless of what we ask).
     const acRes = await getJson(`${base}/${user}/acSubmission?limit=20`, controller.signal);
     if (acRes.status === 404) {
-      return { status: "not_found", acSubs: [], total: null };
+      return { status: "not_found", acSubs: [], total: null, name: null };
     }
     if (!acRes.ok) {
-      return { status: "unreachable", acSubs: [], total: null };
+      return { status: "unreachable", acSubs: [], total: null, name: null };
     }
 
     const acPayload: unknown = await acRes.json();
     if (hasErrorsEnvelope(acPayload)) {
       // alfa answers 200 with { errors: [...] } for bad handles.
-      return { status: "not_found", acSubs: [], total: null };
+      return { status: "not_found", acSubs: [], total: null, name: null };
     }
 
     const acSubs = extractAcSubs(acPayload);
 
+    // /solved (cumulative total) and /{user} (display name) are best-effort —
+    // their failure doesn't downgrade an otherwise-ok result.
     let total: number | null = null;
+    let name: string | null = null;
     try {
       const solvedRes = await getJson(`${base}/${user}/solved`, controller.signal);
       if (solvedRes.ok) {
         const solvedPayload: unknown = await solvedRes.json();
-        if (!hasErrorsEnvelope(solvedPayload)) {
-          total = extractSolved(solvedPayload);
-        }
+        if (!hasErrorsEnvelope(solvedPayload)) total = extractSolved(solvedPayload);
+      }
+    } catch {
+      // best-effort
+    }
+    try {
+      const profileRes = await getJson(`${base}/${user}`, controller.signal);
+      if (profileRes.ok) {
+        const profilePayload: unknown = await profileRes.json();
+        if (!hasErrorsEnvelope(profilePayload)) name = extractName(profilePayload);
       }
     } catch {
       // best-effort
     }
 
-    return { status: "ok", acSubs, total };
+    return { status: "ok", acSubs, total, name };
   } catch {
-    return { status: "unreachable", acSubs: [], total: null };
+    return { status: "unreachable", acSubs: [], total: null, name: null };
   } finally {
     clearTimeout(timer);
   }

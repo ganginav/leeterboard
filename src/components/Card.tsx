@@ -5,31 +5,20 @@ interface CardProps {
   onRemove?: (username: string) => void;
 }
 
-/** Hex color → translucent rgba for tinted borders/backgrounds. */
-function tint(hex: string, alpha: number): string {
-  const n = parseInt(hex.replace("#", ""), 16);
-  const r = (n >> 16) & 255;
-  const g = (n >> 8) & 255;
-  const b = n & 255;
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
 /** One user's "Today" card: dot, name, streak, today's big number, meta line. */
 export default function Card({ user, onRemove }: CardProps) {
-  const { username, color, status, metrics } = user;
+  const { username, name, color, status, metrics } = user;
+  const realName = name && name.toLowerCase() !== username.toLowerCase() ? name : null;
 
   return (
-    <div
-      className="animate-pop relative rounded-2xl border bg-surface/80 p-4 backdrop-blur"
-      style={{ borderColor: tint(color, 0.45) }}
-    >
+    <div className="animate-pop relative rounded-xl border border-edge bg-surface p-4">
       {/* Remove control */}
       {onRemove && (
         <button
           type="button"
           onClick={() => onRemove(username)}
           aria-label={`Remove ${username}`}
-          className="absolute right-2 top-2 h-6 w-6 rounded-md font-mono text-sm text-muted transition hover:bg-edge hover:text-danger"
+          className="absolute right-2 top-2 h-6 w-6 rounded-md text-sm text-muted transition hover:bg-edge hover:text-danger"
         >
           ×
         </button>
@@ -41,17 +30,18 @@ export default function Card({ user, onRemove }: CardProps) {
           style={{ backgroundColor: color }}
         />
         <div className="min-w-0">
-          <div className="truncate font-sans text-sm font-semibold text-ink">
-            {username}
-          </div>
-          <div className="truncate font-mono text-xs text-muted">
-            @{username}
-          </div>
+          {realName ? (
+            <>
+              <div className="truncate text-sm font-semibold text-ink">{realName}</div>
+              <div className="truncate text-xs text-muted">@{username}</div>
+            </>
+          ) : (
+            <div className="truncate text-sm font-semibold text-ink">@{username}</div>
+          )}
         </div>
         {metrics && metrics.streak > 0 && (
           <span
-            className="ml-auto mr-1 shrink-0 font-mono text-sm font-bold"
-            style={{ color: "#f0a500" }}
+            className="ml-auto mr-1 shrink-0 text-sm font-bold text-gold"
             title={`${metrics.streak}-day streak`}
           >
             🔥{metrics.streak}
@@ -64,7 +54,7 @@ export default function Card({ user, onRemove }: CardProps) {
       </div>
 
       {status === "ok" && metrics && (
-        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs text-muted">
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
           <span title="distinct problems solved in the last 7 days">
             7d: <span className="text-ink tnum">{metrics.week}</span>
           </span>
@@ -80,36 +70,25 @@ export default function Card({ user, onRemove }: CardProps) {
 
 /** The big-number / status region of a card. */
 function CardBody({ user }: { user: BoardUser }) {
-  const { status, metrics, color } = user;
+  const { status, metrics } = user;
 
   if (status === "loading") {
-    return <div className="font-mono text-sm text-muted">syncing…</div>;
+    return <div className="text-sm text-muted">syncing…</div>;
   }
   if (status === "not_found") {
-    return (
-      <div className="font-mono text-sm text-danger">
-        not found — public profile?
-      </div>
-    );
+    return <div className="text-sm text-danger">not found — public profile?</div>;
   }
   if (status === "unreachable") {
-    return (
-      <div className="font-mono text-sm text-danger">couldn&apos;t reach API</div>
-    );
+    return <div className="text-sm text-danger">couldn&apos;t reach API</div>;
   }
 
-  // status === "ok"
+  // status === "ok" — green like LeetCode's "Accepted".
   return (
     <div className="flex items-baseline gap-2">
-      <span
-        className="font-mono text-5xl font-extrabold leading-none tnum"
-        style={{ color }}
-      >
+      <span className="text-5xl font-bold leading-none tnum text-grind">
         {metrics?.today ?? 0}
       </span>
-      <span className="font-mono text-xs uppercase tracking-widest text-muted">
-        solved today
-      </span>
+      <span className="text-xs text-muted">solved today</span>
     </div>
   );
 }

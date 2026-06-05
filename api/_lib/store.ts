@@ -16,6 +16,8 @@ import {
 /** Shape stored in Redis and returned to the client. */
 export interface CachedStats {
   username: string;
+  /** Profile display name; null if unset/unavailable. */
+  name: string | null;
   /** Raw recent accepted submissions; the client buckets these by local day. */
   acSubs: AcSub[];
   total: number | null;
@@ -62,6 +64,7 @@ export async function getStatsCached(username: string): Promise<StatsResult> {
 
   const data: CachedStats = {
     username,
+    name: upstream.name,
     acSubs: upstream.acSubs,
     total: upstream.total,
     cachedAt: Date.now(),

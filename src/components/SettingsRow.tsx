@@ -20,7 +20,7 @@ export default function SettingsRow({ onAddUser }: SettingsRowProps) {
     <div className="rounded-2xl border border-edge bg-surface/60 p-4">
       {/* Add user to the shared roster */}
       <form onSubmit={submitUser} className="flex flex-col gap-1.5">
-        <label className="font-mono text-[11px] uppercase tracking-widest text-muted">
+        <label className="text-xs font-medium text-muted">
           add a grinder <span className="text-grind">· shared</span>
         </label>
         <div className="flex gap-2">

@@ -36,7 +36,7 @@ export default function Leaderboard({
   return (
     <div>
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="font-mono text-sm font-bold uppercase tracking-widest text-muted">
+        <h2 className="text-sm font-semibold text-muted">
           Leaderboard
         </h2>
         <div className="flex gap-1 rounded-xl border border-edge bg-surface p-1">
@@ -45,7 +45,7 @@ export default function Leaderboard({
               key={t.key}
               type="button"
               onClick={() => onMetricChange(t.key)}
-              className={`rounded-lg px-3 py-1 font-mono text-xs font-bold uppercase tracking-wider transition ${
+              className={`rounded-lg px-3 py-1 text-xs font-semibold transition ${
                 metric === t.key
                   ? "bg-grind/15 text-grind"
                   : "text-muted hover:text-ink"
@@ -76,12 +76,12 @@ export default function Leaderboard({
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="mb-1 flex items-center justify-between gap-2">
-                    <span className="truncate font-sans text-sm font-semibold text-ink">
-                      {row.user.username}
+                    <span className="truncate text-sm font-semibold text-ink">
+                      {row.user.name ?? row.user.username}
                     </span>
                     <span
-                      className="shrink-0 font-mono text-sm font-bold tnum"
-                      style={{ color: isFirst ? "#f0a500" : row.user.color }}
+                      className="shrink-0 text-sm font-bold tnum"
+                      style={{ color: isFirst ? "#ffa116" : row.user.color }}
                     >
                       {row.value}
                     </span>
@@ -91,7 +91,7 @@ export default function Leaderboard({
                       className="h-full rounded-full transition-all duration-500"
                       style={{
                         width: `${widthPct}%`,
-                        backgroundColor: isFirst ? "#f0a500" : row.user.color,
+                        backgroundColor: isFirst ? "#ffa116" : row.user.color,
                       }}
                     />
                   </div>

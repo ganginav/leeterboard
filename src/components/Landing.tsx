@@ -56,8 +56,8 @@ export default function Landing() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-xl flex-col justify-center px-4 py-12">
-      <h1 className="font-mono text-4xl font-extrabold tracking-tight sm:text-5xl">
-        <span className="text-grind">LEET</span>ERBOARD
+      <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
+        <span className="text-grind">Leet</span>erboard
       </h1>
       <p className="mt-2 font-sans text-sm text-muted">
         A shared LeetCode board for your friend group. Make one, share the link,
@@ -69,7 +69,7 @@ export default function Landing() {
         onSubmit={onCreate}
         className="mt-8 rounded-2xl border border-edge bg-surface/60 p-4"
       >
-        <label className="font-mono text-[11px] uppercase tracking-widest text-muted">
+        <label className="text-xs font-medium text-muted">
           new board
         </label>
         <div className="mt-1.5 flex gap-2">
@@ -92,7 +92,7 @@ export default function Landing() {
 
       {/* Join */}
       <form onSubmit={onJoin} className="mt-3 rounded-2xl border border-edge bg-surface/60 p-4">
-        <label className="font-mono text-[11px] uppercase tracking-widest text-muted">
+        <label className="text-xs font-medium text-muted">
           join with a code or link
         </label>
         <div className="mt-1.5 flex gap-2">
@@ -119,7 +119,7 @@ export default function Landing() {
 
       {recent.length > 0 && (
         <div className="mt-6">
-          <div className="mb-2 font-mono text-[11px] uppercase tracking-widest text-muted">
+          <div className="mb-2 text-xs font-medium text-muted">
             recent
           </div>
           <ul className="space-y-2">

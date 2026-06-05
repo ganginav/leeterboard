@@ -59,7 +59,7 @@ Rewrites every non-`/api` route to the SPA (`/((?!api/).*)` → `/index.html`) s
 
 ## Conventions
 
-- **Dark "grindset terminal" aesthetic** — do not regress to generic styling. Palette/fonts (JetBrains Mono for wordmark/numbers/labels, IBM Plex Sans for body) live in `tailwind.config.js` + `src/index.css`; per-user colors cycle `USER_COLORS`. Monospace tabular numbers, color-tinted card borders, tasteful entrance pop.
+- **Clean LeetCode-style dark theme** — flat `#1a1a1a` background, `#282828` panels, clean system sans (Helvetica Neue / system-ui), LeetCode green `#2cbb5d` accent (`grind`), orange `#ffa116` (`gold`, streaks/#1), red `#ef4743` (`danger`). Palette in `tailwind.config.js`, base in `src/index.css`. JetBrains Mono (`font-mono`) is reserved for numeric values/codes (tabular alignment), not labels. Per-user colors cycle `USER_COLORS` (used for the dot, leaderboard bars, chart lines). Keep it simple — no heavy gradients, all-caps mono labels, or color-tinted glowing borders.
 - **No `any` on public surfaces.** Narrow `unknown` from API payloads explicitly (server `extract*`/`hasErrorsEnvelope` in `api/_lib/leetcode.ts`).
 - Comment **only** where intent is non-obvious — in practice the LeetCode quirks and the server's graceful-degradation branches (no Redis / upstream failure).
 
