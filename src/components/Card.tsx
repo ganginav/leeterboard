@@ -30,14 +30,12 @@ export default function Card({ user, onRemove }: CardProps) {
           style={{ backgroundColor: color }}
         />
         <div className="min-w-0">
-          {realName ? (
-            <>
-              <div className="truncate text-sm font-semibold text-ink">{realName}</div>
-              <div className="truncate text-xs text-muted">@{username}</div>
-            </>
-          ) : (
-            <div className="truncate text-sm font-semibold text-ink">@{username}</div>
-          )}
+          {/* Always two lines for consistent card height — fall back to the
+              handle as the "name" when no real name is set. */}
+          <div className="truncate text-sm font-semibold text-ink">
+            {realName ?? username}
+          </div>
+          <div className="truncate text-xs text-muted">@{username}</div>
         </div>
         {metrics && metrics.streak > 0 && (
           <span
