@@ -13,8 +13,10 @@ export function cacheTtlSeconds(): number {
 
 /** Redis key helpers. Boards are independent: each has its own user SET + meta. */
 export const KEY = {
+  // v2: the daily calendar now counts problems-solved-per-day (was submissions),
+  // so the bumped prefix discards stale submission-based cache entries.
   /** Per-user normalized stats cache (shared across boards — same handle, same stats). */
-  stats: (user: string) => `stats:${user.toLowerCase()}`,
+  stats: (user: string) => `stats:v2:${user.toLowerCase()}`,
   /** Daily solved snapshot for the "solved today" delta. */
   snapshot: (user: string, day: string) => `snap:${user.toLowerCase()}:${day}`,
   /** A board's roster (Redis SET of usernames). */

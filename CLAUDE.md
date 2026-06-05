@@ -39,10 +39,10 @@ There is **no single global board**. Each board is an independent shared roster 
 
 The LeetCode quirks split across the two sides: **`api/_lib/leetcode.ts`** owns upstream *fetching + normalization* (it returns a normalized calendar to the client), while **`src/lib/leetcode.ts`** owns the client-side *derivations* `today`/`week`/`streak`/`deriveMetrics` computed from that normalized calendar. Touch carefully:
 
-1. **UTC day bucketing** — every day key comes from `getUTC*` (LeetCode buckets the calendar by UTC midnight); local getters would drift "today" by a day. (both sides)
-2. **Calendar string parsing** — `/calendar`'s value may be an object *or* a JSON-stringified object of `unixTimestampSeconds: count`. (server `normalizeCalendar`)
-3. **The "don't lose your streak mid-day" rule** in `computeStreak`. (client)
-4. **submissions ≠ solved** — the daily number is submissions (re-subs count); `total` is unique cumulative solved.
+1. **UTC day bucketing** — every day key comes from `getUTC*`; local getters would drift "today" by a day. (both sides)
+2. **Daily = problems solved, NOT submissions** — the daily calendar is built from `recentAcSubmissionList` (`/{user}/acSubmission`): server `normalizeAcCalendar` buckets *accepted* submissions by UTC day and counts **distinct** problems (titleSlug) per day. We deliberately do NOT use the submission calendar (it counts re-subs). `total` (from `/solved`) is cumulative unique solved.
+3. **20-entry window cap** — LeetCode caps `recentAcSubmissionList` at 20, so the daily calendar only reaches back ~20 solved problems; long streaks truncate to the window. The `stats:v2:` cache prefix exists because this metric replaced the old submission-based one.
+4. **The "don't lose your streak mid-day" rule** in `computeStreak`. (client)
 
 ### Server specifics
 

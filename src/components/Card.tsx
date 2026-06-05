@@ -65,23 +65,13 @@ export default function Card({ user, onRemove }: CardProps) {
 
       {status === "ok" && metrics && (
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs text-muted">
-          <span>
+          <span title="distinct problems solved in the last 7 days">
             7d: <span className="text-ink tnum">{metrics.week}</span>
           </span>
           <span className="text-edge2">·</span>
-          <span>
-            solved: <span className="text-ink tnum">{metrics.total}</span>
+          <span title="cumulative unique problems solved (all time)">
+            total: <span className="text-ink tnum">{metrics.total}</span>
           </span>
-          {/* True per-day solved delta — only when server cron snapshots exist. */}
-          {typeof user.solvedToday === "number" && (
-            <>
-              <span className="text-edge2">·</span>
-              <span title="today's solved total minus yesterday's snapshot">
-                solved today:{" "}
-                <span className="text-grind tnum">+{user.solvedToday}</span>
-              </span>
-            </>
-          )}
         </div>
       )}
     </div>
@@ -118,7 +108,7 @@ function CardBody({ user }: { user: BoardUser }) {
         {metrics?.today ?? 0}
       </span>
       <span className="font-mono text-xs uppercase tracking-widest text-muted">
-        subs today
+        solved today
       </span>
     </div>
   );
