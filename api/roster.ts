@@ -15,7 +15,7 @@ import { allowCors, queryParam, requireAdmin, validUsername } from "./_lib/http.
  *   DELETE ?user=<name>  -> { users }        (write, admin-guarded; defaults protected)
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  allowCors(res);
+  allowCors(req, res);
 
   switch (req.method) {
     case "OPTIONS":

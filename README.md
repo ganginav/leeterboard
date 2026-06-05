@@ -89,6 +89,7 @@ Environment Variables** (or a local `.env` for `vercel dev`). See
 | `CACHE_TTL_SECONDS` | no | `600` | per-user stats cache TTL |
 | `ADMIN_TOKEN` | no | — | if set, roster writes require header `x-admin-token`; if unset, writes are open |
 | `CRON_SECRET` | no | — | optional secret for the snapshot cron (`Authorization: Bearer …`) |
+| `ALLOWED_ORIGINS` | no | — | comma-separated origins allowed to make **cross-origin** roster writes; only needed if the frontend is served from a different origin than `/api` (reads are public regardless) |
 | `VITE_API_BASE` | no | public alfa | **fallback/local mode only** (build-time); upstream for direct browser fetch when `/api` is absent |
 
 ¹ Redis is optional: without it the app still runs — stats are fetched uncached
