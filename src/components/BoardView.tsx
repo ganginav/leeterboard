@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Header from "./Header";
 import Card from "./Card";
 import Leaderboard from "./Leaderboard";
-import Sparkline from "./Sparkline";
+import TrendChart from "./TrendChart";
 import SettingsRow from "./SettingsRow";
 import { AUTO_SYNC_MS, USER_COLORS } from "../config";
 import { deriveMetrics } from "../lib/leetcode";
@@ -251,35 +251,12 @@ export default function BoardView({ boardId }: { boardId: string }) {
         <Leaderboard users={boardUsers} metric={metric} onMetricChange={setMetric} />
       </section>
 
-      {/* ── Last 7 days ── */}
-      <section className="mt-10">
-        <h2 className="mb-3 font-mono text-sm font-bold uppercase tracking-widest text-muted">
-          Last 7 days
-        </h2>
-        {weekly.length === 0 ? (
-          <div className="rounded-2xl border border-edge bg-surface/60 p-6 text-center font-mono text-sm text-muted">
-            {boardUsers.length === 0 ? "nothing to show yet" : "no data yet — syncing…"}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {weekly.map((u) => (
-              <div key={u.username} className="rounded-2xl border border-edge bg-surface/60 p-4">
-                <div className="mb-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: u.color }} />
-                    <span className="font-sans text-sm font-semibold text-ink">{u.username}</span>
-                  </div>
-                  <span className="font-mono text-xs text-muted">
-                    7d total:{" "}
-                    <span className="font-bold text-ink tnum">{u.metrics?.week ?? 0}</span>
-                  </span>
-                </div>
-                <Sparkline days={u.metrics?.last7 ?? []} color={u.color} />
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+      {/* ── Solved per day (comparison) ── */}
+      {weekly.length > 0 && (
+        <section className="mt-10">
+          <TrendChart users={weekly} />
+        </section>
+      )}
 
       {/* ── Settings ── */}
       <section className="mt-10">
