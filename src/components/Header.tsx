@@ -16,10 +16,10 @@ export default function Header({
     <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <h1 className="font-mono text-3xl font-extrabold tracking-tight sm:text-4xl">
-          THE <span className="text-grind">GRIND</span> BOARD
+          <span className="text-grind">LEET</span>ERBOARD
         </h1>
         <p className="mt-1 font-sans text-sm text-muted">
-          Shared LeetCode accountability. Stay locked in.
+          See who&apos;s actually doing their LeetCode.
         </p>
       </div>
 

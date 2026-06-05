@@ -59,7 +59,7 @@ export default function Leaderboard({
 
       {ranked.length === 0 ? (
         <div className="rounded-2xl border border-edge bg-surface/60 p-6 text-center font-mono text-sm text-muted">
-          no data yet — syncing…
+          {users.length === 0 ? "nothing to rank yet" : "no data yet — syncing…"}
         </div>
       ) : (
         <ol className="space-y-2">

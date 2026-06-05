@@ -1,10 +1,10 @@
-# THE GRIND BOARD
+# Leeterboard
 
-A shared **LeetCode accountability tracker** for a friend group. Point it at a
-few public LeetCode usernames and it shows everyone's **daily activity,
-streaks, and a leaderboard** — so the group stays locked in and keeps each
-other honest. No manual logging: everything is auto-fetched from public
-profiles.
+A shared **LeetCode accountability tracker** for a friend group — _leet +
+leaderboard_. Point it at a few public LeetCode usernames and it shows
+everyone's **daily activity, streaks, and a leaderboard** — so the group stays
+accountable and keeps each other honest. No manual logging: everything is
+auto-fetched from public profiles.
 
 As of v2 the board is **shared and server-backed**: every visitor sees the same
 roster, and a serverless **caching proxy** sits between the browser and the

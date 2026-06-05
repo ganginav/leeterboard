@@ -422,11 +422,20 @@ export default function App() {
         <h2 className="mb-3 font-mono text-sm font-bold uppercase tracking-widest text-muted">
           Today
         </h2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {cardsByToday.map((u) => (
-            <Card key={u.username} user={u} onRemove={removeUser} />
-          ))}
-        </div>
+        {boardUsers.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-edge2 bg-surface/40 p-8 text-center">
+            <p className="font-mono text-sm text-ink">nobody on the board yet</p>
+            <p className="mt-1 font-sans text-xs text-muted">
+              add a LeetCode username below to get started.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {cardsByToday.map((u) => (
+              <Card key={u.username} user={u} onRemove={removeUser} />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* ── Leaderboard ── */}
@@ -441,7 +450,7 @@ export default function App() {
         </h2>
         {weekly.length === 0 ? (
           <div className="rounded-2xl border border-edge bg-surface/60 p-6 text-center font-mono text-sm text-muted">
-            no data yet — syncing…
+            {boardUsers.length === 0 ? "nothing to show yet" : "no data yet — syncing…"}
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -505,7 +514,7 @@ export default function App() {
       </section>
 
       <footer className="mt-12 border-t border-edge pt-6 text-center font-mono text-[11px] text-muted">
-        THE GRIND BOARD · data via{" "}
+        LEETERBOARD · data via{" "}
         <a
           href="https://github.com/alfaarghya/alfa-leetcode-api"
           target="_blank"
@@ -513,8 +522,7 @@ export default function App() {
           className="text-muted underline hover:text-grind"
         >
           alfa-leetcode-api
-        </a>{" "}
-        · keep grinding
+        </a>
       </footer>
     </div>
   );

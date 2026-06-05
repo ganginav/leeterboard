@@ -1,4 +1,4 @@
-# Self-hosting stack: the GrindBoard SPA + a private alfa-leetcode-api.
+# Self-hosting stack: the Leeterboard SPA + a private alfa-leetcode-api.
 #
 # Bring it up with:  docker compose up --build
 #   - app  -> http://localhost:8080
