@@ -38,14 +38,21 @@ export async function getStatsCached(username: string): Promise<StatsResult> {
   const redis = getRedis();
   const key = KEY.stats(username);
 
+  // Read-through cache. A Redis read error (transient outage, or a single
+  // un-parseable entry) must NOT take down the request — treat it as a miss and
+  // refetch; the subsequent write self-heals any corrupt entry.
   if (redis) {
-    const cached = await redis.get<CachedStats>(key);
-    if (cached) {
-      console.log(`[stats] cache HIT ${key}`);
-      return { status: "ok", data: cached, hit: true };
+    try {
+      const cached = await redis.get<CachedStats>(key);
+      if (cached) {
+        console.log(`[stats] cache HIT ${key}`);
+        return { status: "ok", data: cached, hit: true };
+      }
+    } catch (e) {
+      console.error(`[stats] cache READ failed for ${key} — treating as miss`, e);
     }
   }
-  console.log(`[stats] cache MISS ${KEY.stats(username)}`);
+  console.log(`[stats] cache MISS ${key}`);
 
   const upstream = await fetchUpstreamStats(username);
   if (upstream.status !== "ok") {
@@ -59,7 +66,11 @@ export async function getStatsCached(username: string): Promise<StatsResult> {
     cachedAt: Date.now(),
   };
   if (redis) {
-    await redis.set(key, data, { ex: cacheTtlSeconds() });
+    try {
+      await redis.set(key, data, { ex: cacheTtlSeconds() });
+    } catch (e) {
+      console.error(`[stats] cache WRITE failed for ${key} — serving uncached`, e);
+    }
   }
   return { status: "ok", data, hit: false };
 }
@@ -70,13 +81,24 @@ export function isDefaultUser(name: string): boolean {
   return DEFAULT_USERS.some((d) => d.toLowerCase() === k);
 }
 
+/** Read the Redis-stored roster members, degrading to [] on any Redis error. */
+async function readAddedUsers(): Promise<string[]> {
+  const redis = getRedis();
+  if (!redis) return [];
+  try {
+    return await redis.smembers(KEY.roster);
+  } catch (e) {
+    console.error("[roster] smembers failed — using committed defaults only", e);
+    return [];
+  }
+}
+
 /**
  * Merge committed defaults with the Redis-stored user set, de-duplicated
  * case-insensitively. Defaults always come first and can never be absent.
  */
 export async function getRoster(): Promise<string[]> {
-  const redis = getRedis();
-  const added = redis ? await redis.smembers(KEY.roster) : [];
+  const added = await readAddedUsers();
 
   const seen = new Set<string>();
   const roster: string[] = [];
@@ -94,7 +116,7 @@ export async function getRoster(): Promise<string[]> {
 export async function addRosterUser(name: string): Promise<string[]> {
   const redis = getRedis();
   if (redis && !isDefaultUser(name)) {
-    const existing = await redis.smembers(KEY.roster);
+    const existing = await readAddedUsers();
     const dup = existing.some(
       (u) => String(u).toLowerCase() === name.toLowerCase(),
     );
@@ -107,7 +129,7 @@ export async function addRosterUser(name: string): Promise<string[]> {
 export async function removeRosterUser(name: string): Promise<string[]> {
   const redis = getRedis();
   if (redis) {
-    const existing = await redis.smembers(KEY.roster);
+    const existing = await readAddedUsers();
     const match = existing.find(
       (u) => String(u).toLowerCase() === name.toLowerCase(),
     );

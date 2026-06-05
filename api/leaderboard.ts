@@ -42,9 +42,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const users: BoardEntry[] = [];
   for (const username of roster) {
     const result = await getStatsCached(username);
-    const solvedYesterday = redis
-      ? ((await redis.get<number>(KEY.snapshot(username, yesterday))) ?? null)
-      : null;
+    let solvedYesterday: number | null = null;
+    if (redis) {
+      try {
+        solvedYesterday =
+          (await redis.get<number>(KEY.snapshot(username, yesterday))) ?? null;
+      } catch (e) {
+        console.error(`[leaderboard] snapshot read failed for ${username}`, e);
+      }
+    }
 
     if (result.status === "ok" && result.data) {
       users.push({
