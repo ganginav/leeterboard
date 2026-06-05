@@ -29,6 +29,13 @@ export const DEFAULT_API_BASE = "https://alfa-leetcode-api.onrender.com";
 /** localStorage keys. */
 export const LS_ADDED_USERS = "gb-added-users";
 export const LS_API_BASE = "gb-api-base";
+export const LS_ADMIN_TOKEN = "gb-admin-token";
+
+/** True if `name` is one of the committed defaults (case-insensitive). */
+export function isDefaultUser(name: string): boolean {
+  const k = name.trim().toLowerCase();
+  return DEFAULT_USERS.some((d) => d.toLowerCase() === k);
+}
 
 /** Auto-sync cadence and per-request politeness gap (public instance is rate-limited). */
 export const AUTO_SYNC_MS = 10 * 60 * 1000; // 10 minutes
