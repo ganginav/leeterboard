@@ -1,17 +1,17 @@
 /**
- * api.ts — the data source for the shared (server-backed) board.
+ * api.ts — the data source for a board (server-backed).
  *
- * The client talks ONLY to our same-origin `/api/*` serverless routes — never to
- * LeetCode/alfa directly — so there are no browser CORS concerns and caching +
- * rate-limiting live on the server. This module is the single place the network
- * source lives — swap it and nothing else moves.
- *
- * `loadBoardViaApi()` returns null when the board can't be loaded (the API layer
- * is unreachable or returns a non-JSON response); App surfaces that as an error
- * and retries on the next sync.
+ * The client talks ONLY to same-origin `/api/*` routes. Every board is keyed by
+ * its short id (`?board=ID`); the id in the URL `/b/{ID}` is the only handle
+ * needed — no accounts. This module is the single place the network lives.
  */
 
 import type { Calendar, FetchStatus } from "./leetcode";
+
+export interface BoardMeta {
+  id: string;
+  name: string;
+}
 
 /** One user as returned by GET /api/leaderboard. */
 export interface BoardEntry {
@@ -25,34 +25,51 @@ export interface BoardEntry {
 }
 
 interface LeaderboardResponse {
+  board: BoardMeta;
   users: BoardEntry[];
   generatedAt: number;
 }
 
-interface RosterResponse {
-  users: string[];
-  defaults: string[];
-}
+/** Result of loading a board: found, not found (bad/expired code), or unreachable. */
+export type BoardLoad =
+  | { ok: true; board: BoardMeta; users: BoardEntry[] }
+  | { ok: false; reason: "not_found" | "unreachable" };
 
-/**
- * Load the whole board in ONE call. Returns null when the board can't be loaded
- * (the API layer is unreachable or returns a non-JSON response); the caller
- * surfaces that as an error notice and retries on the next sync.
- */
-export async function loadBoardViaApi(): Promise<BoardEntry[] | null> {
+/** Load a board's metadata + everyone's stats in one call. */
+export async function loadBoard(boardId: string): Promise<BoardLoad> {
   try {
-    const res = await fetch("/api/leaderboard", {
+    const res = await fetch(`/api/leaderboard?board=${encodeURIComponent(boardId)}`, {
       headers: { Accept: "application/json" },
     });
+    if (res.status === 404) return { ok: false, reason: "not_found" };
     const contentType = res.headers.get("content-type") ?? "";
-    // A Vite-only dev server has no /api function: it 404s or serves index.html.
-    if (!res.ok || !contentType.includes("application/json")) return null;
+    if (!res.ok || !contentType.includes("application/json")) {
+      return { ok: false, reason: "unreachable" };
+    }
     const data = (await res.json()) as LeaderboardResponse;
-    if (!data || !Array.isArray(data.users)) return null;
-    return data.users;
+    if (!data?.board || !Array.isArray(data.users)) {
+      return { ok: false, reason: "unreachable" };
+    }
+    return { ok: true, board: data.board, users: data.users };
   } catch {
-    return null; // network/abort → board unavailable
+    return { ok: false, reason: "unreachable" };
   }
+}
+
+/** Create a new board; returns its id + name. Throws on failure. */
+export async function createBoard(name?: string): Promise<BoardMeta> {
+  const res = await fetch("/api/board", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(name ? { name } : {}),
+  });
+  const data: unknown = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg = (data as { message?: string }).message ?? `Couldn't create board (${res.status})`;
+    throw new Error(msg);
+  }
+  const meta = data as BoardMeta;
+  return { id: meta.id, name: meta.name };
 }
 
 async function rosterWrite(
@@ -65,22 +82,26 @@ async function rosterWrite(
     headers: { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-
   const data: unknown = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const msg =
-      (data as { message?: string }).message ?? `Request failed (${res.status})`;
+    const msg = (data as { message?: string }).message ?? `Request failed (${res.status})`;
     throw new Error(msg);
   }
-  return (data as RosterResponse).users;
+  return (data as { users: string[] }).users;
 }
 
-/** Add a user to the shared roster; returns the updated roster. */
-export function apiAddUser(username: string): Promise<string[]> {
-  return rosterWrite("POST", "/api/roster", { username });
+/** Add a user to a board; returns the updated roster. */
+export function apiAddUser(boardId: string, username: string): Promise<string[]> {
+  return rosterWrite("POST", `/api/roster?board=${encodeURIComponent(boardId)}`, {
+    username,
+  });
 }
 
-/** Remove a user from the shared roster; returns the updated roster. */
-export function apiRemoveUser(username: string): Promise<string[]> {
-  return rosterWrite("DELETE", `/api/roster?user=${encodeURIComponent(username)}`, undefined);
+/** Remove a user from a board; returns the updated roster. */
+export function apiRemoveUser(boardId: string, username: string): Promise<string[]> {
+  return rosterWrite(
+    "DELETE",
+    `/api/roster?board=${encodeURIComponent(boardId)}&user=${encodeURIComponent(username)}`,
+    undefined,
+  );
 }

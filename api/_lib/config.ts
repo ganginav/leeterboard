@@ -1,16 +1,3 @@
-/**
- * Server-side copy of the committed default roster.
- *
- * KEEP IN SYNC with `src/config.ts` DEFAULT_USERS. It is intentionally
- * duplicated rather than imported: the serverless functions compile as an
- * isolated Node bundle and shouldn't pull in the browser `src` module graph
- * (which references import.meta / DOM). This list is tiny and rarely changes.
- *
- * These usernames are the shared baseline everyone sees and can NEVER be
- * removed via the API. Empty by default; add handles here to seed a baseline.
- */
-export const DEFAULT_USERS: string[] = [];
-
 /** Upstream alfa-leetcode-api base (server-only). Self-host plugs in here. */
 export function alfaBase(): string {
   return (
@@ -24,9 +11,16 @@ export function cacheTtlSeconds(): number {
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 600;
 }
 
-/** Redis key helpers. */
+/** Redis key helpers. Boards are independent: each has its own user SET + meta. */
 export const KEY = {
+  /** Per-user normalized stats cache (shared across boards — same handle, same stats). */
   stats: (user: string) => `stats:${user.toLowerCase()}`,
-  roster: "roster:users",
+  /** Daily solved snapshot for the "solved today" delta. */
   snapshot: (user: string, day: string) => `snap:${user.toLowerCase()}:${day}`,
+  /** A board's roster (Redis SET of usernames). */
+  boardUsers: (id: string) => `board:${id}:users`,
+  /** A board's metadata (Redis JSON: { name, createdAt }). */
+  boardMeta: (id: string) => `board:${id}:meta`,
+  /** Index of all board ids (so the snapshot cron can enumerate them). */
+  boards: "boards",
 };

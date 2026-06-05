@@ -6,10 +6,13 @@ everyone's **daily activity, streaks, and a leaderboard** — so the group stays
 accountable and keeps each other honest. No manual logging: everything is
 auto-fetched from public profiles.
 
-As of v2 the board is **shared and server-backed**: every visitor sees the same
-roster, and a serverless **caching proxy** sits between the browser and the
+Boards are **shared and server-backed**, and there can be **many** — each is its
+own board with a short code, reached at `/b/{CODE}`. Create one, send the link
+to your group, and everyone sees and edits the same live board. No login — the
+link is the key. A serverless **caching proxy** sits between the browser and the
 public LeetCode API so we don't hammer it. Built with **Vite + React +
-TypeScript + Tailwind**; deploys to **Vercel** (SPA + serverless functions).
+TypeScript + Tailwind**; deploys to **Vercel** (SPA + serverless functions +
+Upstash Redis).
 
 ![stack](https://img.shields.io/badge/vite-react%2Bts-39d353) ![license](https://img.shields.io/badge/license-MIT-8b949e)
 
@@ -61,12 +64,18 @@ notice and retries on the next sync.
 
 | Route | Method | Purpose |
 | --- | --- | --- |
+| `/api/board` | POST | create a board (`{name?}`) → `{id,name,createdAt}` (`503` if no Redis) |
+| `/api/board?id=` | GET | board metadata (`404` if unknown) |
 | `/api/stats?user=` | GET | normalized, Redis-cached stats for one user (`404` not_found / `502` unreachable) |
-| `/api/roster` | GET | shared roster = committed defaults ∪ Redis set (deduped) |
-| `/api/roster` | POST | add a user (`{username}`); open write (cross-origin gated by CORS) |
-| `/api/roster?user=` | DELETE | remove a user; open write; **defaults can't be removed** (`409`) |
-| `/api/leaderboard` | GET | **one call** returning every roster user's stats (through the cache) |
-| `/api/snapshot` | GET | cron: record each user's solved total for daily deltas (optional) |
+| `/api/roster?board=` | GET | that board's roster |
+| `/api/roster?board=` | POST | add a user (`{username}`) to the board; open write (cross-origin gated by CORS) |
+| `/api/roster?board=&user=` | DELETE | remove a user from the board |
+| `/api/leaderboard?board=` | GET | **one call** → `{board, users}` with everyone's stats (`404` if unknown board) |
+| `/api/snapshot` | GET | cron: snapshot solved totals across all boards for daily deltas (optional) |
+
+Boards live in Redis: `board:{id}:meta` (name/createdAt), `board:{id}:users` (a
+SET), and a `boards` index set. The board code in `/b/{id}` is the only handle —
+there are no accounts.
 
 ---
 
@@ -132,16 +141,21 @@ npm run preview        # serve the built SPA only (no /api → board can't load)
    `CACHE_TTL_SECONDS` to tune cache freshness.
 4. Deploy. Done — no Redis still works (defaults-only, uncached).
 
-### Changing the shared roster
+### Boards
 
-- **Committed baseline:** edit `DEFAULT_USERS` in
-  [`src/config.ts`](src/config.ts) **and** the duplicated copy in
-  [`api/_lib/config.ts`](api/_lib/config.ts) (kept in sync on purpose), then
-  redeploy. These can never be removed via the API.
-- **At runtime:** anyone can add a username in the UI — it's `POST`ed to
-  `/api/roster` and shared with everyone. Non-default users can be removed.
-  Writes are open; if you serve the frontend from a different origin than `/api`,
-  set `ALLOWED_ORIGINS` so the cross-origin write isn't blocked by CORS.
+- **Create:** the landing screen makes a board (optionally named) and drops you
+  at `/b/{CODE}`. Share that link/code with your group.
+- **Join:** open the link, or paste the code on the landing screen.
+- **Edit:** anyone with the code can add/remove usernames; changes are shared
+  live with everyone on that board. Writes are open; if you serve the frontend
+  from a different origin than `/api`, set `ALLOWED_ORIGINS` so the cross-origin
+  write isn't blocked by CORS.
+- **Persistence:** boards live server-side in Redis, so a cleared browser cache
+  loses nothing — just reopen the link. Recently-opened boards are listed on the
+  landing screen (stored per-browser in `localStorage`) for convenience.
+
+Boards require Upstash Redis (the stats cache degrades gracefully without it,
+but boards can't be created/stored).
 
 ---
 

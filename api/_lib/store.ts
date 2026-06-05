@@ -6,7 +6,7 @@
  */
 
 import { getRedis } from "./redis.js";
-import { DEFAULT_USERS, KEY, cacheTtlSeconds } from "./config.js";
+import { KEY, cacheTtlSeconds } from "./config.js";
 import {
   fetchUpstreamStats,
   type Calendar,
@@ -75,65 +75,43 @@ export async function getStatsCached(username: string): Promise<StatsResult> {
   return { status: "ok", data, hit: false };
 }
 
-/** Is `name` one of the committed defaults? (case-insensitive) */
-export function isDefaultUser(name: string): boolean {
-  const k = name.trim().toLowerCase();
-  return DEFAULT_USERS.some((d) => d.toLowerCase() === k);
-}
-
-/** Read the Redis-stored roster members, degrading to [] on any Redis error. */
-async function readAddedUsers(): Promise<string[]> {
+/** Read one board's roster members, degrading to [] on any Redis error. */
+export async function getBoardRoster(boardId: string): Promise<string[]> {
   const redis = getRedis();
   if (!redis) return [];
   try {
-    return await redis.smembers(KEY.roster);
+    const members = await redis.smembers(KEY.boardUsers(boardId));
+    return members.map((u) => String(u).trim()).filter(Boolean);
   } catch (e) {
-    console.error("[roster] smembers failed — using committed defaults only", e);
+    console.error(`[roster] smembers failed for board ${boardId}`, e);
     return [];
   }
 }
 
-/**
- * Merge committed defaults with the Redis-stored user set, de-duplicated
- * case-insensitively. Defaults always come first and can never be absent.
- */
-export async function getRoster(): Promise<string[]> {
-  const added = await readAddedUsers();
-
-  const seen = new Set<string>();
-  const roster: string[] = [];
-  for (const u of [...DEFAULT_USERS, ...added]) {
-    const name = String(u).trim();
-    const k = name.toLowerCase();
-    if (!k || seen.has(k)) continue;
-    seen.add(k);
-    roster.push(name);
-  }
-  return roster;
-}
-
-/** Add a user to the shared roster (no-op if it already exists, any casing). */
-export async function addRosterUser(name: string): Promise<string[]> {
-  const redis = getRedis();
-  if (redis && !isDefaultUser(name)) {
-    const existing = await readAddedUsers();
-    const dup = existing.some(
-      (u) => String(u).toLowerCase() === name.toLowerCase(),
-    );
-    if (!dup) await redis.sadd(KEY.roster, name.trim());
-  }
-  return getRoster();
-}
-
-/** Remove a user from the shared roster by case-insensitive match. */
-export async function removeRosterUser(name: string): Promise<string[]> {
+/** Add a user to a board (no-op if already present, any casing). */
+export async function addBoardUser(
+  boardId: string,
+  name: string,
+): Promise<string[]> {
   const redis = getRedis();
   if (redis) {
-    const existing = await readAddedUsers();
-    const match = existing.find(
-      (u) => String(u).toLowerCase() === name.toLowerCase(),
-    );
-    if (match) await redis.srem(KEY.roster, match);
+    const existing = await getBoardRoster(boardId);
+    const dup = existing.some((u) => u.toLowerCase() === name.toLowerCase());
+    if (!dup) await redis.sadd(KEY.boardUsers(boardId), name.trim());
   }
-  return getRoster();
+  return getBoardRoster(boardId);
+}
+
+/** Remove a user from a board by case-insensitive match. */
+export async function removeBoardUser(
+  boardId: string,
+  name: string,
+): Promise<string[]> {
+  const redis = getRedis();
+  if (redis) {
+    const existing = await getBoardRoster(boardId);
+    const match = existing.find((u) => u.toLowerCase() === name.toLowerCase());
+    if (match) await redis.srem(KEY.boardUsers(boardId), match);
+  }
+  return getBoardRoster(boardId);
 }

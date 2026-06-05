@@ -16,15 +16,15 @@ function tint(hex: string, alpha: number): string {
 
 /** One user's "Today" card: dot, name, streak, today's big number, meta line. */
 export default function Card({ user, onRemove }: CardProps) {
-  const { username, color, status, metrics, isDefault } = user;
+  const { username, color, status, metrics } = user;
 
   return (
     <div
       className="animate-pop relative rounded-2xl border bg-surface/80 p-4 backdrop-blur"
       style={{ borderColor: tint(color, 0.45) }}
     >
-      {/* Remove control — only for user-added entries. */}
-      {!isDefault && onRemove && (
+      {/* Remove control */}
+      {onRemove && (
         <button
           type="button"
           onClick={() => onRemove(username)}

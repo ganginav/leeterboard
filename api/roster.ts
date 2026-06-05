@@ -1,63 +1,45 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import {
-  addRosterUser,
-  getRoster,
-  isDefaultUser,
-  removeRosterUser,
-} from "./_lib/store.js";
-import { DEFAULT_USERS } from "./_lib/config.js";
-import { redisEnabled } from "./_lib/redis.js";
+import { addBoardUser, getBoardRoster, removeBoardUser } from "./_lib/store.js";
+import { boardExists, normalizeBoardId } from "./_lib/board.js";
 import { allowCors, queryParam, validUsername } from "./_lib/http.js";
 
 /**
- * /api/roster — the SHARED roster (committed defaults + Redis-stored adds).
- *   GET    -> { users, defaults }            (public)
- *   POST   { username }  -> { users }        (open write; cross-origin writes
- *                                             gated by ALLOWED_ORIGINS CORS)
- *   DELETE ?user=<name>  -> { users }        (open write; defaults protected)
+ * /api/roster?board=<id> — a single board's shared roster.
+ *   GET    -> { users }
+ *   POST   { username }  -> { users }      (open write; cross-origin gated by CORS)
+ *   DELETE ?user=<name>  -> { users }      (open write)
+ * 404 if the board doesn't exist.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   allowCors(req, res);
+  if (req.method === "OPTIONS") return res.status(204).end();
+
+  const boardId = normalizeBoardId(queryParam(req.query, "board"));
+  if (!boardId) {
+    return res.status(400).json({ error: "bad_request", message: "Provide a valid ?board=" });
+  }
+  if (!(await boardExists(boardId))) {
+    return res.status(404).json({ error: "board_not_found" });
+  }
 
   switch (req.method) {
-    case "OPTIONS":
-      return res.status(204).end();
-
-    case "GET": {
-      const users = await getRoster();
-      // `redis` reports whether persistence is actually wired up in THIS
-      // deployment. If false, adds can't persist (roster = committed defaults
-      // only) — the usual cause is missing Upstash env vars or a deploy made
-      // before they were added.
-      return res.status(200).json({ users, defaults: DEFAULT_USERS, redis: redisEnabled() });
-    }
+    case "GET":
+      return res.status(200).json({ users: await getBoardRoster(boardId) });
 
     case "POST": {
       const name = validUsername((req.body as { username?: unknown })?.username);
       if (!name) {
-        return res
-          .status(400)
-          .json({ error: "bad_request", message: "Invalid username." });
+        return res.status(400).json({ error: "bad_request", message: "Invalid username." });
       }
-      const users = await addRosterUser(name);
-      return res.status(200).json({ users, defaults: DEFAULT_USERS });
+      return res.status(200).json({ users: await addBoardUser(boardId, name) });
     }
 
     case "DELETE": {
       const name = validUsername(queryParam(req.query, "user"));
       if (!name) {
-        return res
-          .status(400)
-          .json({ error: "bad_request", message: "Provide a valid ?user=" });
+        return res.status(400).json({ error: "bad_request", message: "Provide a valid ?user=" });
       }
-      if (isDefaultUser(name)) {
-        return res.status(409).json({
-          error: "protected_default",
-          message: `"${name}" is a committed default and can't be removed.`,
-        });
-      }
-      const users = await removeRosterUser(name);
-      return res.status(200).json({ users, defaults: DEFAULT_USERS });
+      return res.status(200).json({ users: await removeBoardUser(boardId, name) });
     }
 
     default:

@@ -1,9 +1,10 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { getRoster, getStatsCached } from "./_lib/store.js";
+import { getBoardRoster, getStatsCached } from "./_lib/store.js";
+import { getBoardMeta, normalizeBoardId } from "./_lib/board.js";
 import { getRedis } from "./_lib/redis.js";
 import { KEY } from "./_lib/config.js";
 import { agoKey, type Calendar, type FetchStatus } from "./_lib/leetcode.js";
-import { allowCors } from "./_lib/http.js";
+import { allowCors, queryParam } from "./_lib/http.js";
 
 /** One user in the combined leaderboard payload. */
 interface BoardEntry {
@@ -23,10 +24,11 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * GET /api/leaderboard
- * One call that returns every roster user's normalized stats, fetched through
- * the SAME cached path as /api/stats (so repeat loads are cheap). The client
- * renders the whole board from this single response.
+ * GET /api/leaderboard?board=<id>
+ * One call that returns a board's metadata plus every roster user's normalized
+ * stats, fetched through the SAME cached path as /api/stats (so repeat loads are
+ * cheap). The client renders the whole board from this single response.
+ * 404 if the board doesn't exist.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   allowCors(req, res);
@@ -35,8 +37,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: "method_not_allowed" });
   }
 
+  const boardId = normalizeBoardId(queryParam(req.query, "board"));
+  if (!boardId) {
+    return res.status(400).json({ error: "bad_request", message: "Provide a valid ?board=" });
+  }
+  const meta = await getBoardMeta(boardId);
+  if (!meta) {
+    return res.status(404).json({ error: "board_not_found" });
+  }
+
   const redis = getRedis();
-  const roster = await getRoster();
+  const roster = await getBoardRoster(boardId);
   const yesterday = agoKey(1);
 
   const users: BoardEntry[] = [];
@@ -69,5 +80,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!result.hit) await sleep(MISS_GAP_MS);
   }
 
-  return res.status(200).json({ users, generatedAt: Date.now() });
+  return res.status(200).json({
+    board: { id: meta.id, name: meta.name },
+    users,
+    generatedAt: Date.now(),
+  });
 }

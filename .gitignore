@@ -33,3 +33,6 @@ pnpm-debug.log*
 
 # Vite
 *.local
+
+# Secrets
+.env

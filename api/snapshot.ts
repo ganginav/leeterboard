@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { getRoster, getStatsCached } from "./_lib/store.js";
+import { getBoardRoster, getStatsCached } from "./_lib/store.js";
 import { getRedis } from "./_lib/redis.js";
 import { KEY } from "./_lib/config.js";
 import { todayKey } from "./_lib/leetcode.js";
@@ -36,10 +36,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const day = todayKey();
-  const roster = await getRoster();
-  let stored = 0;
 
-  for (const username of roster) {
+  // Gather the unique set of users across every board (a handle can appear on
+  // many boards, but its stats — and snapshot — are global to the handle).
+  const boardIds = await redis.smembers(KEY.boards);
+  const users = new Set<string>();
+  for (const id of boardIds) {
+    for (const u of await getBoardRoster(String(id))) users.add(u.toLowerCase());
+  }
+
+  let stored = 0;
+  for (const username of users) {
     const result = await getStatsCached(username);
     if (result.status === "ok" && result.data && result.data.total !== null) {
       await redis.set(KEY.snapshot(username, day), result.data.total, {
@@ -49,5 +56,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  return res.status(200).json({ ok: true, day, stored, users: roster.length });
+  return res.status(200).json({ ok: true, day, stored, users: users.size, boards: boardIds.length });
 }

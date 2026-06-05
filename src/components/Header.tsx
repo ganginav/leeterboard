@@ -1,12 +1,17 @@
+import { navigate } from "../lib/boards";
+
 interface HeaderProps {
+  /** Board name shown under the wordmark (omitted on the landing screen). */
+  boardName?: string;
   subsToday: number;
   syncing: boolean;
   lastSynced: number | null;
   onSync: () => void;
 }
 
-/** Top bar: wordmark, "subs today" stat, and the manual sync button. */
+/** Top bar: wordmark (→ home), board name, "subs today" stat, and sync button. */
 export default function Header({
+  boardName,
   subsToday,
   syncing,
   lastSynced,
@@ -15,11 +20,18 @@ export default function Header({
   return (
     <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <h1 className="font-mono text-3xl font-extrabold tracking-tight sm:text-4xl">
+        <a
+          href="/"
+          onClick={(e) => {
+            e.preventDefault();
+            navigate("/");
+          }}
+          className="inline-block font-mono text-3xl font-extrabold tracking-tight transition hover:opacity-80 sm:text-4xl"
+        >
           <span className="text-grind">LEET</span>ERBOARD
-        </h1>
+        </a>
         <p className="mt-1 font-sans text-sm text-muted">
-          See who&apos;s actually doing their LeetCode.
+          {boardName ?? "See who's actually doing their LeetCode."}
         </p>
       </div>
 

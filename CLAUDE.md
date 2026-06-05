@@ -26,11 +26,11 @@ TypeScript uses project references from `tsconfig.json`: `tsconfig.app.json` (th
 
 Leeterboard tracks a friend group's public LeetCode activity (daily submissions, streaks, leaderboard) — no manual logging. **Vite + React 18 + TypeScript + Tailwind 3** SPA, plus **Vercel serverless functions** that act as a shared roster store + caching proxy.
 
-### Server-backed, single data path — this is the central design
+### Multi-board, server-backed — this is the central design
 
-The browser calls **only** same-origin `/api/*` routes — never LeetCode/alfa directly. The server fetches + normalizes upstream LeetCode data, caches it in Upstash Redis, and stores a **shared roster** everyone sees. No browser CORS, centralized rate-limiting.
+There is **no single global board**. Each board is an independent shared roster identified by a short code, lives entirely in Redis, and is reached at the path **`/b/{ID}`** — the code in the URL is the only key (no accounts/login). The browser calls **only** same-origin `/api/*` routes — never LeetCode/alfa directly. The server fetches + normalizes upstream LeetCode data and caches it in Upstash Redis. No browser CORS, centralized rate-limiting.
 
-On mount `App.tsx` loads the whole board via `loadBoardViaApi()` (`GET /api/leaderboard`). If that call can't be satisfied (API unreachable / non-JSON response) it returns null and App shows a "couldn't reach the board" notice, retrying on the next sync. There is no client-side fetch fallback — the app is useless without `/api`.
+`App.tsx` is a tiny path router (`boardIdFromPath`): `/b/{ID}` renders `BoardView`, anything else renders `Landing` (create a board / join by code-or-link / reopen a recent one). `BoardView` loads everything via `loadBoard(id)` (`GET /api/leaderboard?board=ID`): a `not_found` means a bad/expired code (dead-end screen), `unreachable` shows a retry notice. Recently-opened boards are remembered in `localStorage` (`src/lib/boards.ts`) purely as a landing-screen convenience — the server is always the source of truth. There is no client-side fetch fallback; the app is useless without `/api` + Redis.
 
 ### The network layer is the load-bearing wall (two small modules)
 
@@ -48,9 +48,10 @@ The LeetCode quirks split across the two sides: **`api/_lib/leetcode.ts`** owns 
 
 - **Redis is optional and every path degrades gracefully.** `getRedis()` returns null when neither `UPSTASH_REDIS_REST_URL/_TOKEN` nor `KV_REST_API_URL/_TOKEN` is set; callers then fetch uncached and serve defaults-only. **Use `@upstash/redis`, never the sunset `@vercel/kv`.**
 - **Caching:** `getStatsCached()` is read-through (`stats:{user}` with `CACHE_TTL_SECONDS` TTL); only `ok` results are cached. Responses set `x-cache: HIT|MISS`.
-- **Roster:** committed `DEFAULT_USERS` (duplicated in `api/_lib/config.ts` ↔ `src/config.ts`, kept in sync deliberately) merged case-insensitively with a Redis SET `roster:users`. Defaults are unremovable (DELETE returns 409).
-- **Write protection:** roster writes (`POST`/`DELETE /api/roster`) are open — there's no token gate. Cross-origin writes are blocked by CORS: `allowCors` only advertises `POST`/`DELETE` to origins listed in `ALLOWED_ORIGINS` (the verbs are preflighted, so an untrusted browser never gets to send the write). GET is always public.
-- **`/api/leaderboard`** returns the whole board in one call (client renders from it). **`/api/snapshot`** is an optional daily cron recording solved totals so the UI can show a true "solved today" delta.
+- **Boards:** `api/_lib/board.ts` owns ids (Crockford-ish base32, no ambiguous chars), creation, and meta (`board:{id}:meta` JSON). Each board's roster is a Redis SET `board:{id}:users`; `boards` is a SET of all ids (so the snapshot cron can enumerate them). There are no committed defaults — boards start empty. `POST /api/board` creates one (needs Redis → 503 without it); roster/leaderboard routes 404 on an unknown board.
+- **Roster writes** (`POST`/`DELETE /api/roster?board=ID`) are open — no token gate; any user is removable. Cross-origin writes are blocked by CORS: `allowCors` only advertises `POST`/`DELETE` to origins listed in `ALLOWED_ORIGINS` (the verbs are preflighted). GET is always public.
+- **`/api/leaderboard?board=ID`** returns `{ board, users }` in one call (client renders from it). **`/api/snapshot`** is an optional daily cron that snapshots solved totals for every user across all boards, so the UI can show a true "solved today" delta.
+- **Redis is required for boards** (unlike the stats cache, which degrades gracefully). All Redis reads still swallow errors and degrade (board not found / empty roster) rather than 500.
 
 ### `vercel.json`
 
