@@ -3,16 +3,17 @@ import { navigate } from "../lib/boards";
 interface HeaderProps {
   /** Board name shown under the wordmark (omitted on the landing screen). */
   boardName?: string;
-  subsToday: number;
+  /** Sum of everyone's problems-solved-today. */
+  todayTotal: number;
   syncing: boolean;
   lastSynced: number | null;
   onSync: () => void;
 }
 
-/** Top bar: wordmark (→ home), board name, "subs today" stat, and sync button. */
+/** Top bar: wordmark (→ home), board name, "solved today" stat, and sync button. */
 export default function Header({
   boardName,
-  subsToday,
+  todayTotal,
   syncing,
   lastSynced,
   onSync,
@@ -38,10 +39,10 @@ export default function Header({
       <div className="flex items-center gap-4">
         <div className="text-right">
           <div className="font-mono text-3xl font-extrabold leading-none tnum text-grind">
-            {subsToday}
+            {todayTotal}
           </div>
           <div className="font-mono text-[11px] uppercase tracking-widest text-muted">
-            subs today
+            solved today
           </div>
         </div>
 

@@ -20,17 +20,18 @@ Upstash Redis).
 
 ## What the numbers mean (read this)
 
-- **The big daily number is _submissions_, not unique solves.** It comes from
-  LeetCode's per-day submission calendar — the most reliable public "did they
-  grind today" signal — so re-submits and multiple attempts all count. This is
-  intentional: it rewards showing up.
-- **"solved" is the exact cumulative total** of unique accepted problems.
-- **"solved today" (optional)** is a true per-day *solved* delta, shown only when
-  daily snapshots exist (see [Accurate daily solved](#accurate-daily-solved-optional)).
+- **The big daily number is _problems solved that day_** — distinct problems
+  accepted, so re-solving the same one counts once. It's the "did you actually do
+  a problem today" signal, derived from LeetCode's recent **accepted** submissions
+  (`recentAcSubmissionList`), not raw submissions.
+- **"total" is the exact cumulative count** of unique solved problems (all time).
+- **Window cap:** LeetCode only exposes your **last ~20 accepted** problems, so
+  the daily history (and therefore long streaks) reaches back only that far.
+  Today / this week / short streaks are unaffected.
 - **Only _public_ LeetCode profiles work.** A private profile reads as "not found".
 
-Streaks count **consecutive UTC days** with at least one submission. If you
-haven't submitted yet _today_, your streak is measured ending **yesterday**, so
+Streaks count **consecutive UTC days** with at least one problem solved. If you
+haven't solved one yet _today_, your streak is measured ending **yesterday**, so
 it isn't falsely "lost" early in the day.
 
 ---
