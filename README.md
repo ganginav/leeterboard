@@ -1,10 +1,10 @@
-# THE GRIND BOARD
+# Leeterboard
 
-A shared **LeetCode accountability tracker** for a friend group. Point it at a
-few public LeetCode usernames and it shows everyone's **daily activity,
-streaks, and a leaderboard** — so the group stays locked in and keeps each
-other honest. No manual logging: everything is auto-fetched from public
-profiles.
+A shared **LeetCode accountability tracker** for a friend group — _leet +
+leaderboard_. Point it at a few public LeetCode usernames and it shows
+everyone's **daily activity, streaks, and a leaderboard** — so the group stays
+accountable and keeps each other honest. No manual logging: everything is
+auto-fetched from public profiles.
 
 As of v2 the board is **shared and server-backed**: every visitor sees the same
 roster, and a serverless **caching proxy** sits between the browser and the
@@ -84,6 +84,7 @@ Environment Variables** (or a local `.env` for `vercel dev`). See
 | `CACHE_TTL_SECONDS` | no | `600` | per-user stats cache TTL |
 | `ADMIN_TOKEN` | no | — | if set, roster writes require header `x-admin-token`; if unset, writes are open |
 | `CRON_SECRET` | no | — | optional secret for the snapshot cron (`Authorization: Bearer …`) |
+| `ALLOWED_ORIGINS` | no | — | comma-separated origins allowed to make **cross-origin** roster writes; only needed if the frontend is served from a different origin than `/api` (reads are public regardless) |
 
 ¹ Redis is optional: without it the app still runs — stats are fetched uncached
 and the roster is just the committed defaults. **We use `@upstash/redis`, not the

@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { getRoster, getStatsCached } from "./_lib/store";
-import { getRedis } from "./_lib/redis";
-import { KEY } from "./_lib/config";
-import { todayKey } from "./_lib/leetcode";
-import { allowCors, authorizeSnapshot } from "./_lib/http";
+import { getRoster, getStatsCached } from "./_lib/store.js";
+import { getRedis } from "./_lib/redis.js";
+import { KEY } from "./_lib/config.js";
+import { todayKey } from "./_lib/leetcode.js";
+import { allowCors, authorizeSnapshot } from "./_lib/http.js";
 
 const SNAPSHOT_TTL_SECONDS = 60 * 60 * 24 * 90; // 90 days
 
@@ -19,7 +19,7 @@ const SNAPSHOT_TTL_SECONDS = 60 * 60 * 24 * 90; // 90 days
  * Bearer ...). Vercel Cron requires a Pro plan — this whole feature is optional.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  allowCors(res);
+  allowCors(req, res);
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "GET") {
     return res.status(405).json({ error: "method_not_allowed" });

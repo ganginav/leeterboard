@@ -24,7 +24,7 @@ TypeScript uses project references from `tsconfig.json`: `tsconfig.app.json` (th
 
 ## Architecture
 
-GrindBoard tracks a friend group's public LeetCode activity (daily submissions, streaks, leaderboard) — no manual logging. **Vite + React 18 + TypeScript + Tailwind 3** SPA, plus **Vercel serverless functions** that act as a shared roster store + caching proxy.
+Leeterboard tracks a friend group's public LeetCode activity (daily submissions, streaks, leaderboard) — no manual logging. **Vite + React 18 + TypeScript + Tailwind 3** SPA, plus **Vercel serverless functions** that act as a shared roster store + caching proxy.
 
 ### Server-backed, single data path — this is the central design
 

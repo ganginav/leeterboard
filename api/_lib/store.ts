@@ -5,13 +5,13 @@
  * fetched uncached, and the roster is just the committed defaults.
  */
 
-import { getRedis } from "./redis";
-import { DEFAULT_USERS, KEY, cacheTtlSeconds } from "./config";
+import { getRedis } from "./redis.js";
+import { DEFAULT_USERS, KEY, cacheTtlSeconds } from "./config.js";
 import {
   fetchUpstreamStats,
   type Calendar,
   type FetchStatus,
-} from "./leetcode";
+} from "./leetcode.js";
 
 /** Shape stored in Redis and returned to the client. */
 export interface CachedStats {

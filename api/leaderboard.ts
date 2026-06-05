@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { getRoster, getStatsCached } from "./_lib/store";
-import { getRedis } from "./_lib/redis";
-import { KEY } from "./_lib/config";
-import { agoKey, type Calendar, type FetchStatus } from "./_lib/leetcode";
-import { allowCors } from "./_lib/http";
+import { getRoster, getStatsCached } from "./_lib/store.js";
+import { getRedis } from "./_lib/redis.js";
+import { KEY } from "./_lib/config.js";
+import { agoKey, type Calendar, type FetchStatus } from "./_lib/leetcode.js";
+import { allowCors } from "./_lib/http.js";
 
 /** One user in the combined leaderboard payload. */
 interface BoardEntry {
@@ -29,7 +29,7 @@ function sleep(ms: number): Promise<void> {
  * renders the whole board from this single response.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  allowCors(res);
+  allowCors(req, res);
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "GET") {
     return res.status(405).json({ error: "method_not_allowed" });

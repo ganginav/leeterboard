@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { getStatsCached } from "./_lib/store";
-import { allowCors, queryParam, validUsername } from "./_lib/http";
+import { getStatsCached } from "./_lib/store.js";
+import { allowCors, queryParam, validUsername } from "./_lib/http.js";
 
 /**
  * GET /api/stats?user=<username>
@@ -9,7 +9,7 @@ import { allowCors, queryParam, validUsername } from "./_lib/http";
  * 404 -> { error: "not_found" }   502 -> { error: "unreachable" }
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  allowCors(res);
+  allowCors(req, res);
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "GET") {
     return res.status(405).json({ error: "method_not_allowed" });

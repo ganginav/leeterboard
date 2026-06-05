@@ -7,10 +7,10 @@
  * those go to the shared server-side roster. Kept in sync with the server copy
  * in `api/_lib/config.ts` deliberately.
  *
- * NOTE: "GANGINAV" is a seed placeholder — correct it to the real LeetCode
- * handle if it doesn't resolve (only PUBLIC profiles work).
+ * To seed a shared baseline that CAN'T be removed via the UI/API, add handles
+ * here (only PUBLIC profiles work) AND mirror them in `api/_lib/config.ts`.
  */
-export const DEFAULT_USERS: string[] = ["GANGINAV"];
+export const DEFAULT_USERS: string[] = [];
 
 /** Per-user accent colors, cycled by roster index. */
 export const USER_COLORS: string[] = [

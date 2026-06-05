@@ -15,7 +15,7 @@
  *      included); `total` from /solved is the unique cumulative solved count.
  */
 
-import { alfaBase } from "./config";
+import { alfaBase } from "./config.js";
 
 export type Calendar = Record<string, number>;
 export type FetchStatus = "ok" | "not_found" | "unreachable";
@@ -71,7 +71,9 @@ export function normalizeCalendar(raw: unknown): Calendar {
     const tsNum = Number(ts);
     const c = Number(count);
     if (!Number.isFinite(tsNum) || !Number.isFinite(c)) continue;
-    const day = utcKey(new Date(tsNum * 1000)); // ts is in SECONDS
+    const date = new Date(tsNum * 1000); // ts is in SECONDS
+    if (Number.isNaN(date.getTime())) continue; // out-of-range ts -> skip, not a "NaN-NaN-NaN" bucket
+    const day = utcKey(date);
     out[day] = (out[day] ?? 0) + c;
   }
   return out;

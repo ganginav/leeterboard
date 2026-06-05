@@ -1,5 +1,5 @@
 /**
- * leetcode.ts — the client-side metric-derivation layer for GrindBoard.
+ * leetcode.ts — the client-side metric-derivation layer for Leeterboard.
  *
  * The browser never fetches LeetCode directly; the server (api/_lib/leetcode.ts)
  * fetches + normalizes upstream payloads and hands the client a ready calendar
