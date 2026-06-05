@@ -29,7 +29,7 @@ function sleep(ms: number): Promise<void> {
  * renders the whole board from this single response.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  allowCors(res);
+  allowCors(req, res);
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "GET") {
     return res.status(405).json({ error: "method_not_allowed" });

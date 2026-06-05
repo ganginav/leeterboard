@@ -9,7 +9,7 @@ import { allowCors, queryParam, validUsername } from "./_lib/http.js";
  * 404 -> { error: "not_found" }   502 -> { error: "unreachable" }
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  allowCors(res);
+  allowCors(req, res);
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "GET") {
     return res.status(405).json({ error: "method_not_allowed" });
